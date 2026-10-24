@@ -137,7 +137,7 @@ function adler32(data: Buffer): number {
     a = (a + byte) % 65521;
     b = (b + a) % 65521;
   }
-  return ((b << 16) | a) >>> 0;
+  return ((a << 16) | b) >>> 0;
 }
 
 /** Derive a stable hue from the prompt so different prompts look different. */
