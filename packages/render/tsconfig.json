@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    // This package runs only in Node (it spawns FFmpeg and writes files), so it declares
+    // Node globals. The base config's DOM lib would wrongly permit `document` here.
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

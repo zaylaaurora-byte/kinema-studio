@@ -1,0 +1,27 @@
+{
+  "name": "@kinema/audio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Voice direction, speech generation adapters and multitrack audio mixing.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf .turbo dist"
+  },
+  "dependencies": {
+    "@kinema/provider-sdk": "workspace:*",
+    "@kinema/types": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
