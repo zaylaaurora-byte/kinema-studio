@@ -1,0 +1,23 @@
+{
+  "name": "@kinema/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Design tokens and shared configuration.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tokens.css": "./src/tokens.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rimraf .turbo dist"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
