@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Environment — NEVER commit real secrets
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Renders and scratch media
+renders/
+tmp/
+*.mp4
+*.mov
+*.wav
+!docs/**/*.mp4
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Local databases
+*.sqlite
+*.sqlite3

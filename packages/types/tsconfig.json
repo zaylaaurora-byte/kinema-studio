@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    // This package must typecheck in three different runtimes: the browser (web app),
+    // Node (api/worker), and a bundled worker process. It therefore declares only the
+    // universally-available globals rather than pulling in the full DOM lib, which
+    // would wrongly permit `document` in server code.
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}

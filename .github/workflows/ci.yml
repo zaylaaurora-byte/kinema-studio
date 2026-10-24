@@ -1,0 +1,75 @@
+name: CI
+
+# Runs on every push and pull request. Deliberately requires NO secrets:
+# the whole test suite must pass with Mock adapters and zero paid API calls.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep CI hermetic and free. Any test that reaches the network is a bug.
+  FEATURE_LIVE_PROVIDERS: "false"
+  FEATURE_LOCAL_WORKER: "false"
+  NODE_ENV: test
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  secrets-check:
+    name: No committed secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A committed provider key is the single most damaging mistake this repo can
+      # make. Fail loudly rather than silently leaking a user's credentials.
+      - name: Scan for committed credentials
+        run: |
+          set +e
+          PATTERNS='sk-[A-Za-z0-9]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|sk-or-v1-[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}'
+          MATCHES=$(git grep -nE "$PATTERNS" -- \
+            ':!*.md' ':!*.example' ':!.github/*' ':!pnpm-lock.yaml' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Possible committed credential detected:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "No credential patterns found."
