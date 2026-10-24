@@ -188,18 +188,31 @@ export const CONFUSED: Expression = {
   channels: face(0.95, 1.05, 16, 0.12, 0.03, 0.7, 0.8, -0.04, 12),
 };
 
-/** Tiny pupils, brows high: the sheet's SCARED. */
+/**
+ * Tiny eyes, brows high and ANGLED INWARD: the sheet's SCARED.
+ *
+ * Distinguished from `shocked` by the eyes being shrunken pinpricks rather than wide.
+ * The two expressions are close cousins, so they are separated on eye SIZE (0.55 vs
+ * 1.3 on scaleY), which is the cue an audience actually reads at a glance.
+ */
 export const SCARED: Expression = {
   name: "scared",
-  description: "Eyes shrunk to pinpricks, brows shot up, mouth a small tight oval.",
-  channels: face(0.6, 0.6, -18, 0.2, 0.08, 0.65, 1.1, -0.08),
+  description: "Eyes shrunk to pinpricks, brows high and drawn inward, mouth a tight oval.",
+  channels: face(0.55, 0.55, -14, 0.14, 0.04, 0.6, 1.3, -0.1),
 };
 
-/** Maximum terror: the sheet's PANIC. */
+/**
+ * Maximum terror: the sheet's PANIC.
+ *
+ * The brow raise is capped at 0.18 head radii. Beyond roughly 0.2 the brow bar's outer
+ * CORNER crosses the head outline, because the bar is wide and the circle curves away
+ * from it — the character looks like it has brows growing out of its skull. The eyes
+ * carry the panic instead, which is where an audience looks anyway.
+ */
 export const PANIC: Expression = {
   name: "panic",
   description: "Eyes bulging, brows shot up, mouth a wailing hole.",
-  channels: face(1.15, 1.4, -24, 0.26, 0.1, 1.05, 2.8, -0.3),
+  channels: face(1.15, 1.4, -24, 0.16, 0.08, 1.05, 2.8, -0.3),
 };
 
 /** Brows angled hard inward and down: the sheet's DETERMINED. */
@@ -223,11 +236,16 @@ export const SAD: Expression = {
   channels: face(1, 0.85, -22, 0.1, -0.03, 0.95, 0.7, -0.02, -18),
 };
 
-/** Extra expression: the sheet's SHOCKED, a useful hard cut. */
+/**
+ * Extra expression: the sheet's SHOCKED, a useful hard cut.
+ *
+ * Distinguished from `scared` by the eyes going WIDE and round rather than small, and by
+ * a small round mouth instead of a tight oval.
+ */
 export const SHOCKED: Expression = {
   name: "shocked",
-  description: "Everything wide: round eyes, high brows, a small round mouth.",
-  channels: face(1.1, 1.3, -16, 0.2, 0.06, 0.7, 1.5, -0.06),
+  description: "Everything wide: big round eyes, high straight brows, a small round mouth.",
+  channels: face(1.25, 1.3, -14, 0.2, 0.06, 0.62, 1.35, -0.04),
 };
 
 /**

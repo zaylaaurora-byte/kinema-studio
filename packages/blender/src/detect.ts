@@ -211,7 +211,7 @@ export function extractVersionFromDirName(dirName: string): string | null {
 export function windowsInstallCandidates(
   parent: string,
   readDir: (path: string) => readonly string[],
-  joinPath: (a: string, b: string) => string = join,
+  joinPath: (...segments: string[]) => string = join,
 ): readonly string[] {
   let entries: readonly string[];
   try {

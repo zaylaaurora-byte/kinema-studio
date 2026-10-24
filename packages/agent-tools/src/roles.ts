@@ -21,6 +21,7 @@
 
 import type { JsonSchema } from "./schema.js";
 import { ToolError } from "./tool.js";
+import { registerRoleSchemaProvider } from "./task.js";
 import { TOOL, type ToolName } from "./tool-names.js";
 
 // ---------------------------------------------------------------------------
@@ -541,6 +542,21 @@ export const ROLE_NAMES: readonly RoleName[] = [
   "editor",
   "qc_reviewer",
 ];
+
+/**
+ * Each role's output schema, keyed by role.
+ *
+ * This is what `createTask` uses when a caller does not supply an explicit `outputSchema`.
+ * It is registered with `task.ts` on evaluation so that neither module has to be loaded
+ * first — see `registerRoleSchemaProvider` for why that mattered.
+ */
+export const ROLE_OUTPUT_SCHEMAS: Readonly<Record<RoleName, JsonSchema>> = Object.freeze(
+  Object.fromEntries(
+    ROLE_NAMES.map((name) => [name, ROLES[name].outputSchema]),
+  ) as Record<RoleName, JsonSchema>,
+);
+
+registerRoleSchemaProvider(() => ({ ROLE_OUTPUT_SCHEMAS }));
 
 export function listRoles(): readonly Role[] {
   return ROLE_NAMES.map((name) => ROLES[name]);

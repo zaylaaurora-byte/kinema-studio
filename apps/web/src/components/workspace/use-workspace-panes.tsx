@@ -131,7 +131,20 @@ export interface PaneDividerProps {
   readonly orientation: "vertical" | "horizontal";
   readonly label: string;
   readonly panes: WorkspacePanes;
-  /** Sign applied to the drag delta. `-1` for the right pane and the timeline. */
+  /**
+   * How a positive divider delta maps onto this pane's size.
+   *
+   *  `1`  - the pane grows when the divider moves right/down. Correct for the
+   *         LEFT pane: its right edge IS the divider.
+   *  `-1` - the pane grows when the divider moves left/up. Correct for the RIGHT
+   *         pane and the TIMELINE, whose near edge is the divider.
+   *
+   * This is applied once, as a sign, inside `ResizeDivider`. It is deliberately
+   * not an arithmetic remap of the value: an earlier version mirrored the number
+   * (`min + max - next`), which made the divider's own `aria-valuenow` disagree
+   * with the pane it controlled and inverted the arrow keys and the clamp, so
+   * ArrowUp on the timeline drove it to its maximum instead of its minimum.
+   */
   readonly direction?: 1 | -1;
 }
 
@@ -155,14 +168,9 @@ export function PaneDivider({
       min={bounds.min}
       max={bounds.max}
       collapsed={panes.collapsed[pane]}
-      // During the drag the live size is held locally by the divider; this fires
-      // with the value already adjusted for the pane's growth direction.
-      onChange={(next) =>
-        panes.setSize(pane, direction === 1 ? next : bounds.min + bounds.max - next)
-      }
-      onCommit={(next) =>
-        panes.setSize(pane, direction === 1 ? next : bounds.min + bounds.max - next)
-      }
+      direction={direction}
+      onChange={(next) => panes.setSize(pane, next)}
+      onCommit={(next) => panes.setSize(pane, next)}
       onToggleCollapse={() => panes.toggleCollapse(pane)}
     />
   );

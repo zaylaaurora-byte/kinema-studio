@@ -44,6 +44,20 @@ export interface ResizeDividerProps {
   readonly onToggleCollapse?: () => void;
   readonly collapsed?: boolean;
   readonly label: string;
+  /**
+   * How a positive DIVIDER movement (right, or down) maps onto this pane's size.
+   *
+   *  `1`  - pane grows as the divider moves right/down. The pane's far edge is
+   *         the divider, so this is the LEFT pane.
+   *  `-1` - pane grows as the divider moves left/up. The pane's near edge is the
+   *         divider, so this is the RIGHT pane and the TIMELINE.
+   *
+   * Getting this wrong is subtle and was a real bug here: with the wrong sign,
+   * ArrowUp on the timeline drove it to its maximum rather than its minimum.
+   * The correct mental model is that the ARROW KEY always moves the DIVIDER, and
+   * the pane responds according to which side of the divider it sits on.
+   */
+  readonly direction?: 1 | -1;
   readonly id?: string;
   readonly className?: string;
 }
@@ -62,6 +76,7 @@ export function ResizeDivider({
   onToggleCollapse,
   collapsed = false,
   label,
+  direction = 1,
   id,
   className,
 }: ResizeDividerProps) {
@@ -102,9 +117,9 @@ export function ResizeDivider({
     if (!drag) return;
     const currentPos = isVertical ? event.clientX : event.clientY;
     const delta = currentPos - drag.startPos;
-    // The left pane grows as the divider moves right; the right pane and the
-    // timeline grow as it moves left/up, hence the sign flip.
-    apply(drag.startValue + delta);
+    // The divider moved by `delta`. Whether the pane grows or shrinks depends on
+    // which side of the divider it occupies - that is what `direction` encodes.
+    apply(drag.startValue + delta * direction);
   };
 
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -119,24 +134,21 @@ export function ResizeDivider({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? STEP * COARSE_MULTIPLIER : STEP;
-    // "Forward"/"back" differ per axis: for a vertical divider separating
-    // left|right, ArrowRight grows the left pane.
-    let delta: number | null = null;
+    // Arrow keys move the DIVIDER in screen space, then the pane reacts via
+    // `direction`. ArrowRight/ArrowDown always push the divider right/down.
+    let dividerDelta: number | null = null;
 
     if (isVertical) {
-      if (event.key === "ArrowRight") delta = step;
-      if (event.key === "ArrowLeft") delta = -step;
+      if (event.key === "ArrowRight") dividerDelta = step;
+      if (event.key === "ArrowLeft") dividerDelta = -step;
     } else {
-      // Horizontal divider separating top|bottom. ArrowDown grows the pane above
-      // it (the timeline sits BELOW its divider, so this is inverted by the
-      // caller passing a negative-aware onChange).
-      if (event.key === "ArrowDown") delta = step;
-      if (event.key === "ArrowUp") delta = -step;
+      if (event.key === "ArrowDown") dividerDelta = step;
+      if (event.key === "ArrowUp") dividerDelta = -step;
     }
 
-    if (delta !== null) {
+    if (dividerDelta !== null) {
       event.preventDefault();
-      onCommit?.(apply(latest.current + delta));
+      onCommit?.(apply(latest.current + dividerDelta * direction));
       return;
     }
 

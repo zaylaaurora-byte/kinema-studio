@@ -251,20 +251,40 @@ export function cycleTrack(
   if (holdSeconds <= 0) {
     throw new Error(`Cycle track "${name}" needs a positive hold duration.`);
   }
+  if (repeats <= 0) {
+    throw new Error(`Cycle track "${name}" needs at least one repeat.`);
+  }
 
   const cues: PoseCue[] = [];
-  let time = 0;
-  for (let r = 0; r < repeats; r++) {
-    for (const poseId of poseIds) {
-      cues.push({ time, poseId });
-      time += holdSeconds;
-    }
+  const beats = poseIds.length * repeats;
+  for (let i = 0; i < beats; i++) {
+    const poseId = poseIds[i % poseIds.length]!;
+    // Time is computed by MULTIPLYING the beat index rather than accumulating
+    // `time += holdSeconds`. Accumulation drifts: three additions of 0.3 give
+    // 0.8999999999999999, so a cue that should land exactly on a frame boundary falls
+    // just short of it and the switch fires one frame late.
+    cues.push({ time: roundTime(i * holdSeconds), poseId });
   }
   // Close the loop explicitly so the final beat returns to the first pose, which is what
   // makes a repeating cycle seamless rather than stopping on its last pose.
-  cues.push({ time, poseId: poseIds[0]! });
+  cues.push({ time: roundTime(beats * holdSeconds), poseId: poseIds[0]! });
 
   return poseTrack(name, cues);
+}
+
+/**
+ * Round a time to microseconds.
+ *
+ * Timings are authored in decimal seconds (0.3, 0.12) and compared against frame
+ * boundaries. Binary floating point cannot represent 0.3 exactly, so accumulating or
+ * multiplying beats produces values like 0.8999999999999999 that compare unequal to the
+ * 0.9 an author wrote. Rounding at the point of construction keeps cue times equal to
+ * the decimals they were authored as, which makes `switchTimes` and any frame-aligned
+ * comparison behave as expected. Microsecond resolution is far finer than any frame rate
+ * this tool will target.
+ */
+function roundTime(seconds: number): number {
+  return Math.round(seconds * 1e6) / 1e6;
 }
 
 // ---------------------------------------------------------------------------

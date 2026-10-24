@@ -708,19 +708,62 @@ print('${REPORT_END_MARKER}')
  * module, and puts the answer in the report rather than raising — a failed invariant must
  * not destroy an otherwise good render.
  */
-const SELF_CHECK = `
+/**
+ * Build the covered-identifier self-check, listing only the names the emitted script
+ * actually binds.
+ *
+ * The list is computed from the operations rather than hardcoded, because a check that
+ * names identifiers the script never binds reports a false failure — which is worse than
+ * no check at all, since it trains the reader to ignore the warning that is supposed to
+ * catch a real silent bug.
+ */
+function buildSelfCheck(operations: readonly SceneOperation[]): string {
+  const guessed = new Set<string>(["scene", "_kinema_warnings", "_kinema_report"]);
+
+  for (const operation of operations) {
+    switch (operation.op) {
+      case "addPrimitive":
+        guessed.add("_object");
+        if (operation.material !== undefined) guessed.add("_kinema_lookup");
+        break;
+      case "setMaterial":
+        guessed.add("_kinema_material");
+        guessed.add("_kinema_rgba");
+        if ((operation.applyTo ?? []).length > 0) guessed.add("_kinema_object");
+        break;
+      case "addLight":
+        guessed.add("_light");
+        break;
+      case "addCamera":
+        guessed.add("_camera");
+        break;
+      case "setRenderSettings": {
+        guessed.add("_kinema_engine");
+        guessed.add("_kinema_engines_available");
+        if (operation.fileFormat !== undefined) guessed.add("_kinema_formats");
+        break;
+      }
+      case "render":
+        guessed.add("_kinema_render_error");
+        break;
+    }
+  }
+
+  const names = [...guessed].sort().map((name) => `    '${name}',`).join("\n");
+
+  return `
 # --- covered-identifier self-check -------------------------------------------------
 # Function locals shadow module globals for the whole body of the function, not from the
 # assignment onwards. A helper that reads a covered name while also assigning a local of
 # that same name therefore breaks in a way nothing above can catch. Rather than trust that
 # no emitter ever does that, prove it on every run.
 #
-# The module namespace is read via globals(), not dir(). dir() reports only what has been
-# bound so far, so every name bound inside an 'if True:' suite reads as missing and the
-# check raises a false alarm on a perfectly good script.
+# The list below is generated from the operation types actually emitted, so it never names
+# a variable this script does not bind. A check that cries wolf is worse than no check.
+# The module namespace is read via globals(), not dir(): dir() reports only what has been
+# bound so far, so every name bound inside an 'if True:' suite reads as missing.
 _kinema_expected_globals = [
-    'scene', '_object', '_kinema_warnings', '_kinema_report', '_kinema_lookup',
-    '_kinema_target', '_kinema_material', '_kinema_rgba', '_kinema_engine',
+${names}
 ]
 _kinema_namespace = globals()
 _kinema_missing_globals = sorted([
@@ -733,6 +776,7 @@ if _kinema_missing_globals:
         + ', '.join(_kinema_missing_globals)
     )
 `.trim();
+}
 
 export interface BuildSceneScriptOptions {
   readonly operations: readonly SceneOperation[];
@@ -790,7 +834,7 @@ export function buildSceneScript(options: BuildSceneScriptOptions): string {
     "",
     body,
     "",
-    SELF_CHECK,
+    buildSelfCheck(operations),
     "",
     EPILOGUE,
     "",

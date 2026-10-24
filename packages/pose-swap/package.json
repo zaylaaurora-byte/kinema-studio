@@ -1,0 +1,34 @@
+{
+  "name": "@kinema/pose-swap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Limited 2D (pose-swap / cut-out) animation: discrete pose tracks, mouth flaps and pose cycles.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./library/human": {
+      "types": "./src/library/human.ts",
+      "default": "./src/library/human.ts"
+    },
+    "./library/host": {
+      "types": "./src/library/host.ts",
+      "default": "./src/library/host.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rimraf .turbo dist"
+  },
+  "dependencies": {
+    "@kinema/scene-model": "workspace:*",
+    "@kinema/types": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}

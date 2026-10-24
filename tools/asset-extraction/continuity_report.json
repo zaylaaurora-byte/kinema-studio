@@ -1,0 +1,86 @@
+{
+  "generated_by": "continuity.py",
+  "thresholds": {
+    "palette_emd": 0.22,
+    "silhouette_iou": 0.62,
+    "aspect_ratio_delta": 0.35,
+    "area_ratio": 0.45,
+    "perceptual_lab": 26.0
+  },
+  "pairs": [
+    {
+      "reference": "X:\\Project Kinema\\projects\\bad-example\\assets\\extracted\\01_Demon_Host_Primary_Character_Sheet\\001_front.png",
+      "generated": "X:\\Project Kinema\\projects\\bad-example\\assets\\extracted\\01_Demon_Host_Primary_Character_Sheet\\003_side.png",
+      "verdict": "REVIEW",
+      "failed_checks": [
+        "silhouette",
+        "perceptual"
+      ],
+      "reference_stats": {
+        "size": [
+          101,
+          355
+        ],
+        "had_alpha": true,
+        "silhouette_px": 19737,
+        "aspect_ratio": 0.2845,
+        "mean_colour": "#8C756A"
+      },
+      "generated_stats": {
+        "size": [
+          103,
+          355
+        ],
+        "had_alpha": true,
+        "silhouette_px": 23694,
+        "aspect_ratio": 0.2901,
+        "mean_colour": "#776158"
+      },
+      "metrics": {
+        "palette": {
+          "value": 0.0848,
+          "threshold": 0.22,
+          "passed": true,
+          "note": "normalised EMD in RGB; 0 = identical palettes"
+        },
+        "silhouette": {
+          "value": 0.4152,
+          "threshold": 0.62,
+          "passed": false,
+          "note": "IoU of aligned subject masks"
+        },
+        "aspect_ratio": {
+          "value": 0.0056,
+          "threshold": 0.35,
+          "passed": true,
+          "note": "|AR_ref - AR_gen|; appendage PROXY, not detection"
+        },
+        "area": {
+          "value": 0.167,
+          "threshold": 0.45,
+          "passed": true,
+          "note": "1 - min/max silhouette area; appendage PROXY"
+        },
+        "perceptual": {
+          "value": 35.085,
+          "threshold": 26.0,
+          "passed": false,
+          "note": "mean |dLab| over the union of masks"
+        }
+      },
+      "thresholds": {
+        "palette_emd": 0.22,
+        "silhouette_iou": 0.62,
+        "aspect_ratio_delta": 0.35,
+        "area_ratio": 0.45,
+        "perceptual_lab": 26.0
+      },
+      "limitations": [
+        "Extra-limb detection is a PROXY only: bounding-box aspect ratio and silhouette area. It CANNOT detect an appendage contained within the existing silhouette (a sixth limb held against the body, or one occluded by another).",
+        "The proxy FIRES on legitimate pose and framing differences. A turnaround front view versus a laughing head WILL fail area and aspect ratio; that is the measurement working, not a defect.",
+        "IoU here is shape agreement after size normalisation, not identity. Two different characters of similar build can score high.",
+        "Nothing here evaluates facial identity, costume detail changes smaller than a colour bin, or anything semantic. It is a triage tool to point a human at likely drift, not a pass/fail oracle."
+      ]
+    }
+  ]
+}

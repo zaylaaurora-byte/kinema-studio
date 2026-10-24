@@ -1,7 +1,7 @@
 import Link from "next/link";
 import * as React from "react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/cn";
 import { typography } from "@/lib/tokens";

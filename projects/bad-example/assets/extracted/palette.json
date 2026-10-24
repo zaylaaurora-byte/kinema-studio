@@ -1,0 +1,531 @@
+{
+  "generated_by": "palette.py",
+  "source_dir": "C:\\Users\\zayla\\Documents\\deepseek-harness\\default-workspace\\bad-example",
+  "sheets": {
+    "01_Demon_Host_Primary_Character_Sheet.png": {
+      "background": "#C8BEB2",
+      "declared": [
+        {
+          "label": "Hair",
+          "group": "demon",
+          "hex": "#392321",
+          "bgr": [
+            33,
+            35,
+            57
+          ],
+          "rect": [
+            1368,
+            50,
+            38,
+            27
+          ],
+          "fill": 0.94,
+          "artwork_share": 0.4001,
+          "sheet_pixel_share": 0.219009
+        },
+        {
+          "label": "Skin",
+          "group": "demon",
+          "hex": "#ECB7A2",
+          "bgr": [
+            162,
+            183,
+            236
+          ],
+          "rect": [
+            1368,
+            89,
+            37,
+            24
+          ],
+          "fill": 0.961,
+          "artwork_share": 0.2312,
+          "sheet_pixel_share": 0.1454
+        },
+        {
+          "label": "Eyes",
+          "group": "demon",
+          "hex": "#EEA651",
+          "bgr": [
+            81,
+            166,
+            238
+          ],
+          "rect": [
+            1368,
+            127,
+            37,
+            24
+          ],
+          "fill": 1.0,
+          "artwork_share": 0.0,
+          "sheet_pixel_share": 0.0013
+        },
+        {
+          "label": "Horns / Tail",
+          "group": "demon",
+          "hex": "#312725",
+          "bgr": [
+            37,
+            39,
+            49
+          ],
+          "rect": [
+            1368,
+            165,
+            38,
+            26
+          ],
+          "fill": 0.954,
+          "artwork_share": 0.4001,
+          "sheet_pixel_share": 0.234134
+        },
+        {
+          "label": "Sweater",
+          "group": "demon",
+          "hex": "#E6CEBA",
+          "bgr": [
+            186,
+            206,
+            230
+          ],
+          "rect": [
+            1368,
+            205,
+            37,
+            24
+          ],
+          "fill": 1.0,
+          "artwork_share": 0.0959,
+          "sheet_pixel_share": 0.213483
+        },
+        {
+          "label": "Clothes (Black)",
+          "group": "demon",
+          "hex": "#232020",
+          "bgr": [
+            32,
+            32,
+            35
+          ],
+          "rect": [
+            1367,
+            243,
+            39,
+            27
+          ],
+          "fill": 0.946,
+          "artwork_share": 0.5747,
+          "sheet_pixel_share": 0.247877
+        },
+        {
+          "label": "Mouth / Tongue",
+          "group": "demon",
+          "hex": "#B2484E",
+          "bgr": [
+            78,
+            72,
+            178
+          ],
+          "rect": [
+            1368,
+            284,
+            37,
+            28
+          ],
+          "fill": 1.0,
+          "artwork_share": 0.023,
+          "sheet_pixel_share": 0.003768
+        },
+        {
+          "label": "Accents (Red)",
+          "group": "demon",
+          "hex": "#C4342F",
+          "bgr": [
+            47,
+            52,
+            196
+          ],
+          "rect": [
+            1368,
+            328,
+            38,
+            31
+          ],
+          "fill": 0.963,
+          "artwork_share": 0.023,
+          "sheet_pixel_share": 0.008598
+        }
+      ],
+      "declared_source": "located swatch blocks",
+      "dominant": [
+        {
+          "hex": "#31211F",
+          "bgr": [
+            31,
+            33,
+            49
+          ],
+          "share": 0.4001
+        },
+        {
+          "hex": "#0E0808",
+          "bgr": [
+            8,
+            8,
+            14
+          ],
+          "share": 0.1746
+        },
+        {
+          "hex": "#E9B09A",
+          "bgr": [
+            154,
+            176,
+            233
+          ],
+          "share": 0.1353
+        },
+        {
+          "hex": "#E8CEBA",
+          "bgr": [
+            186,
+            206,
+            232
+          ],
+          "share": 0.0959
+        },
+        {
+          "hex": "#623B39",
+          "bgr": [
+            57,
+            59,
+            98
+          ],
+          "share": 0.0759
+        },
+        {
+          "hex": "#AE9083",
+          "bgr": [
+            131,
+            144,
+            174
+          ],
+          "share": 0.0528
+        },
+        {
+          "hex": "#7F6C63",
+          "bgr": [
+            99,
+            108,
+            127
+          ],
+          "share": 0.0425
+        },
+        {
+          "hex": "#C03833",
+          "bgr": [
+            51,
+            56,
+            192
+          ],
+          "share": 0.023
+        }
+      ],
+      "labels_are_printed_order": true,
+      "caveat": "Labels are assigned in the printed reading order. Verify the rectangles in `declared[].rect` against the sheet: if the finder missed or merged a block, labels after that point shift by one."
+    },
+    "03_Paired_Character_And_Expressions_Reference.png": {
+      "background": "#EAE0D2",
+      "declared": [
+        {
+          "label": "Demon Hair/Base",
+          "group": "demon",
+          "hex": "#432728",
+          "bgr": [
+            40,
+            39,
+            67
+          ],
+          "rect": [
+            898,
+            37,
+            36,
+            37
+          ],
+          "fill": 0.785,
+          "artwork_share": 0.2451,
+          "sheet_pixel_share": 0.118654
+        },
+        {
+          "label": "Demon Accent Red",
+          "group": "demon",
+          "hex": "#B54A48",
+          "bgr": [
+            72,
+            74,
+            181
+          ],
+          "rect": [
+            951,
+            37,
+            37,
+            37
+          ],
+          "fill": 0.743,
+          "artwork_share": 0.0272,
+          "sheet_pixel_share": 0.003782
+        },
+        {
+          "label": "Demon Deep Brown",
+          "group": "demon",
+          "hex": "#502C2C",
+          "bgr": [
+            44,
+            44,
+            80
+          ],
+          "rect": [
+            898,
+            87,
+            36,
+            36
+          ],
+          "fill": 0.775,
+          "artwork_share": 0.2451,
+          "sheet_pixel_share": 0.100445
+        },
+        {
+          "label": "Demon Eye Orange",
+          "group": "demon",
+          "hex": "#F57B1B",
+          "bgr": [
+            27,
+            123,
+            245
+          ],
+          "rect": [
+            951,
+            87,
+            36,
+            35
+          ],
+          "fill": 0.678,
+          "artwork_share": 0.0,
+          "sheet_pixel_share": 0.000807
+        },
+        {
+          "label": "Demon Skin",
+          "group": "demon",
+          "hex": "#D8C0AB",
+          "bgr": [
+            171,
+            192,
+            216
+          ],
+          "rect": [
+            898,
+            135,
+            37,
+            37
+          ],
+          "fill": 0.835,
+          "artwork_share": 0.1045,
+          "sheet_pixel_share": 0.052207
+        },
+        {
+          "label": "Demon Clothes Black",
+          "group": "demon",
+          "hex": "#1B1919",
+          "bgr": [
+            25,
+            25,
+            27
+          ],
+          "rect": [
+            951,
+            135,
+            36,
+            37
+          ],
+          "fill": 0.736,
+          "artwork_share": 0.3987,
+          "sheet_pixel_share": 0.201501
+        },
+        {
+          "label": "Demon Hair Shadow",
+          "group": "demon",
+          "hex": "#3D3030",
+          "bgr": [
+            48,
+            48,
+            61
+          ],
+          "rect": [
+            898,
+            184,
+            36,
+            38
+          ],
+          "fill": 0.781,
+          "artwork_share": 0.2451,
+          "sheet_pixel_share": 0.126698
+        },
+        {
+          "label": "Demon Light Skin",
+          "group": "demon",
+          "hex": "#EEC8B8",
+          "bgr": [
+            184,
+            200,
+            238
+          ],
+          "rect": [
+            947,
+            181,
+            43,
+            44
+          ],
+          "fill": 0.777,
+          "artwork_share": 0.0,
+          "sheet_pixel_share": 0.39888
+        },
+        {
+          "label": "Human White",
+          "group": "human",
+          "hex": "#FAF3EC",
+          "bgr": [
+            236,
+            243,
+            250
+          ],
+          "rect": [
+            1420,
+            47,
+            26,
+            42
+          ],
+          "fill": 0.791,
+          "artwork_share": 0.0799,
+          "sheet_pixel_share": 0.485978
+        },
+        {
+          "label": "Human Red",
+          "group": "human",
+          "hex": "#D64A49",
+          "bgr": [
+            73,
+            74,
+            214
+          ],
+          "rect": [
+            1466,
+            46,
+            43,
+            44
+          ],
+          "fill": 0.752,
+          "artwork_share": 0.0272,
+          "sheet_pixel_share": 0.005614
+        },
+        {
+          "label": "Human Black",
+          "group": "human",
+          "hex": "#0F0F0F",
+          "bgr": [
+            15,
+            15,
+            15
+          ],
+          "rect": [
+            1420,
+            108,
+            27,
+            47
+          ],
+          "fill": 0.794,
+          "artwork_share": 0.3987,
+          "sheet_pixel_share": 0.181049
+        }
+      ],
+      "declared_source": "located swatch blocks",
+      "dominant": [
+        {
+          "hex": "#151416",
+          "bgr": [
+            22,
+            20,
+            21
+          ],
+          "share": 0.3987
+        },
+        {
+          "hex": "#4C2D2C",
+          "bgr": [
+            44,
+            45,
+            76
+          ],
+          "share": 0.2451
+        },
+        {
+          "hex": "#CABAAA",
+          "bgr": [
+            170,
+            186,
+            202
+          ],
+          "share": 0.1045
+        },
+        {
+          "hex": "#FAF6F2",
+          "bgr": [
+            242,
+            246,
+            250
+          ],
+          "share": 0.0799
+        },
+        {
+          "hex": "#685D58",
+          "bgr": [
+            88,
+            93,
+            104
+          ],
+          "share": 0.0572
+        },
+        {
+          "hex": "#978E86",
+          "bgr": [
+            134,
+            142,
+            151
+          ],
+          "share": 0.0569
+        },
+        {
+          "hex": "#EF9973",
+          "bgr": [
+            115,
+            153,
+            239
+          ],
+          "share": 0.0305
+        },
+        {
+          "hex": "#CC473C",
+          "bgr": [
+            60,
+            71,
+            204
+          ],
+          "share": 0.0272
+        }
+      ],
+      "labels_are_printed_order": true,
+      "caveat": "Labels are assigned in the printed reading order. Verify the rectangles in `declared[].rect` against the sheet: if the finder missed or merged a block, labels after that point shift by one."
+    }
+  }
+}

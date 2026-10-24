@@ -943,7 +943,7 @@ export class ProviderPlanner implements Planner {
         {
           retryable: normalised.retryable,
           userActionRequired: normalised.userActionRequired,
-          detail: normalised.detail,
+          ...(normalised.detail !== undefined ? { detail: normalised.detail } : {}),
         },
       );
     }

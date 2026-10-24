@@ -2,29 +2,38 @@
  * Animations for the Silent Human.
  *
  * ---------------------------------------------------------------------------
- * THE REQUIREMENT THIS FILE EXISTS TO SATISFY
+ * THE HOUSE STYLE: LIMITED ANIMATION
  * ---------------------------------------------------------------------------
- * The pilot explicitly forbids "a Ken Burns zoom on still art". A Ken Burns move is a
- * camera transform applied to an unchanging picture: the picture never articulates. The
- * difference between that and real animation is whether the LIMB PARTS THEMSELVES change
- * their world transform over time.
+ * This show is limited 2D animation (pose-to-pose / cut-out / cel), the style used by
+ * narrated YouTube compilation channels. That means:
  *
- * Every animation here therefore keys channels on limb parts — shoulders, elbows, hips,
- * knees — with multiple keyframes per cycle, so sampling the rig at different times
- * produces genuinely different world transforms. `animations.test.ts` proves this by
- * sampling and comparing, rather than by trusting that keyframes exist.
+ *   - animation is DISCRETE POSE SWAPS: hold pose A, then switch to pose B;
+ *   - most frames are HELD, and cadence is roughly 0.3-0.8s per pose;
+ *   - smoothly tweened limbs read as uncanny sliding and are WRONG for this style.
+ *
+ * Accordingly the PRIMARY interface in this file is `DISCRETE_ANIMATIONS`: each entry is
+ * a `PoseTrack` of named poses swapped on a beat (see `pose-track.ts`). Limbs genuinely
+ * move, but they move by jumping between drawings, which is the correct look.
+ *
+ * The smooth interpolated variants below (`SMOOTH_ANIMATIONS`) are retained as an
+ * explicit, clearly-labelled escape hatch, because the pilot originally asked for
+ * keyframed limb movement and a future shot may want a deliberate tween. They are NOT
+ * the default. Reaching for one should be a decision, not an accident.
  *
  * ---------------------------------------------------------------------------
- * LOOPS ARE CLOSED, NOT TRUNCATED
+ * WHY THIS STILL SATISFIES "NO KEN BURNS ZOOM"
  * ---------------------------------------------------------------------------
- * `wave` and `runCycle` repeat the start values as their final keyframe. Animations are
- * sampled by holding the last value, so a cycle that did not return to its first pose
- * would snap when looped. Closing the loop makes N repetitions seamless.
+ * A Ken Burns move transforms the CAMERA over an unchanging picture. Here the limb parts
+ * themselves change world transform between beats: shoulders, elbows, hips and knees all
+ * take different angles. That is real articulation, just quantised in time rather than
+ * continuous. `animations.test.ts` proves it by sampling and comparing, not by asserting
+ * that keyframes exist.
  */
 
 import type { Channel, EasingName, Keyframe, Rig } from "../scene.js";
 import { EXPRESSIONS } from "./expressions.js";
 import { applyChannels, deg } from "./poses.js";
+import { applyPoseTrack, cycleTrack, poseTrack, type PoseTrack } from "./pose-track.js";
 
 /**
  * A numeric channel assembled from `[time, value]` pairs.
@@ -69,6 +78,7 @@ function easedDegChannel(
 /** Channel overrides keyed by part id, the shape `applyChannels` consumes. */
 export type AnimationChannels = Readonly<Record<string, Readonly<Record<string, Channel>>>>;
 
+/** A smoothly interpolated animation. See the header: NOT the house style. */
 export interface Animation {
   readonly name: string;
   readonly description: string;
@@ -80,16 +90,137 @@ export interface Animation {
 }
 
 // ---------------------------------------------------------------------------
+// DISCRETE ANIMATIONS — the house style
+// ---------------------------------------------------------------------------
+
+/**
+ * A limited-animation cycle: named poses swapped on a fixed beat.
+ *
+ * This is the shape a consumer should reach for first. Everything about it is discrete:
+ * the poses are whole-body configurations, and the beat is the cadence at which they
+ * swap.
+ */
+export interface DiscreteAnimation {
+  readonly name: string;
+  readonly description: string;
+  /** Seconds each pose is held before the next swap. */
+  readonly holdSeconds: number;
+  /** The pose ids cycled, in order. */
+  readonly poseIds: readonly string[];
+  /** The underlying track, so it can be applied or sampled directly. */
+  readonly track: PoseTrack;
+}
+
+/**
+ * Wave, as limited animation.
+ *
+ * The raised arm HOLDS while the forearm swaps between two extreme angles on a beat.
+ * Two full oscillation cycles are keyed, because the pilot requires at least two and a
+ * single swing reads as a salute rather than a wave. Because the poses are swapped
+ * rather than tweened, the wave has the snap of hand-drawn limited animation.
+ */
+export const WAVE_DISCRETE: DiscreteAnimation = {
+  name: "wave",
+  description: "Arm raised and held; forearm swaps between two extremes through 2 cycles.",
+  holdSeconds: 0.3,
+  poseIds: ["wave", "waveDown"],
+  track: cycleTrack("wave", ["wave", "waveDown"], 0.3, 2),
+};
+
+/**
+ * Run cycle, as limited animation.
+ *
+ * Three discrete drawings — contact left, gathered, contact right — swapped on a 0.3s
+ * beat, which sits inside the brief's 0.3-0.8s cadence. The alternation is total: the
+ * two contact poses are exact mirrors, so consecutive frames put the legs in opposite
+ * configurations rather than nudging them.
+ */
+export const RUN_CYCLE_DISCRETE: DiscreteAnimation = {
+  name: "runCycle",
+  description: "Three-pose run: contact left, gathered, contact right, on a 0.3s beat.",
+  holdSeconds: 0.3,
+  poseIds: ["run", "runUp", "runAlt", "runUp"],
+  track: cycleTrack("runCycle", ["run", "runUp", "runAlt", "runUp"], 0.3, 2),
+};
+
+/**
+ * Trip and fall, as limited animation.
+ *
+ * Stand, trip, HOLD the sprawl (the comedy beat needs the hold), then a delayed reaction
+ * into the cower. The hold is not padding: in limited animation the held frame is where
+ * the joke lands, and a tween would rob it of the pause.
+ */
+export const TRIP_FALL_DISCRETE: DiscreteAnimation = {
+  name: "tripFall",
+  description: "Stand, trip, hold the sprawl, then snap into a cower.",
+  holdSeconds: 0.5,
+  poseIds: ["neutral", "trip", "cower"],
+  track: poseTrack("tripFall", [
+    { time: 0, poseId: "neutral" },
+    { time: 0.4, poseId: "trip" },
+    // The held sprawl: 0.8s of nothing happening, which is the punchline.
+    { time: 1.2, poseId: "trip" },
+    { time: 1.5, poseId: "cower" },
+    { time: 2.2, poseId: "cower" },
+  ]),
+};
+
+/** The discrete (house-style) animations, keyed by name. */
+export const DISCRETE_ANIMATIONS: Readonly<Record<string, DiscreteAnimation>> = Object.freeze({
+  wave: WAVE_DISCRETE,
+  runCycle: RUN_CYCLE_DISCRETE,
+  tripFall: TRIP_FALL_DISCRETE,
+});
+
+/** Names of the discrete animations, in a stable order. */
+export const DISCRETE_ANIMATION_NAMES = Object.keys(DISCRETE_ANIMATIONS);
+
+/** Look up a discrete animation, failing loudly on a typo. */
+export function getDiscreteAnimation(name: string): DiscreteAnimation {
+  const animation = DISCRETE_ANIMATIONS[name];
+  if (!animation) {
+    throw new Error(
+      `Unknown animation "${name}". Available: ${DISCRETE_ANIMATION_NAMES.join(", ")}`,
+    );
+  }
+  return animation;
+}
+
+/**
+ * Apply a discrete animation to a rig, returning a new rig ready for `evaluate()`.
+ *
+ * This is the entry point the renderer should use. The returned rig carries `step`-eased
+ * channels, so `evaluate(rig, t)` yields a held pose at every t.
+ */
+export function applyDiscreteAnimation(rig: Rig, animation: DiscreteAnimation): Rig {
+  return applyPoseTrack(rig, animation.track);
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// SMOOTH ANIMATIONS — the explicit escape hatch, NOT the house style
+// ---------------------------------------------------------------------------
+//
+// Everything below interpolates continuously between keyframes. In limited animation
+// that reads as uncanny sliding, so these are NOT what a shot should use by default.
+// They are kept because the pilot may want one deliberate tween, and because they are
+// the honest reference for "what smooth would look like" when comparing the two styles.
+//
+// Prefer `DISCRETE_ANIMATIONS` above.
+// ---------------------------------------------------------------------------
+
 // wave — arm raises, then oscillates through at least 2 full cycles
 // ---------------------------------------------------------------------------
 
 /**
- * Waving. The arm is raised once, then the forearm oscillates.
+ * Waving, smoothly interpolated.
  *
- * Two full oscillation cycles are keyed (four direction changes), because the pilot
- * requires at least two and a single swing reads as a salute rather than a wave. The
- * oscillation is keyed on the FOREARM while the upper arm holds, which is how a real
+ * The arm is raised once, then the forearm oscillates. Two full oscillation cycles are
+ * keyed (four direction changes), because a single swing reads as a salute rather than a
+ * wave. The oscillation is on the FOREARM while the upper arm holds, which is how a real
  * wave looks: the shoulder holds the arm up, the elbow does the work.
+ *
+ * SMOOTH VARIANT: see the section header. `WAVE_DISCRETE` is the house-style version.
  */
 export const WAVE_ANIMATION: Animation = {
   name: "wave",
@@ -491,52 +622,74 @@ export const TRIP_FALL: Animation = {
   },
 };
 
-/** Every animation, keyed by name. */
-export const ANIMATIONS: Readonly<Record<string, Animation>> = Object.freeze({
+/**
+ * Every SMOOTH animation, keyed by name.
+ *
+ * Named distinctly from `DISCRETE_ANIMATIONS` so that a caller cannot pick the wrong
+ * style by accident: `ANIMATIONS` here means "the interpolated ones".
+ */
+export const SMOOTH_ANIMATIONS: Readonly<Record<string, Animation>> = Object.freeze({
   wave: WAVE_ANIMATION,
   runCycle: RUN_CYCLE,
   tripFall: TRIP_FALL,
 });
 
-/** Names of all available animations, in a stable order. */
-export const ANIMATION_NAMES = Object.keys(ANIMATIONS);
+/** Names of all smooth animations, in a stable order. */
+export const SMOOTH_ANIMATION_NAMES = Object.keys(SMOOTH_ANIMATIONS);
 
-/** Look up an animation, failing loudly on a typo. */
-export function getAnimation(name: string): Animation {
-  const animation = ANIMATIONS[name];
+/** Look up a smooth animation, failing loudly on a typo. */
+export function getSmoothAnimation(name: string): Animation {
+  const animation = SMOOTH_ANIMATIONS[name];
   if (!animation) {
-    throw new Error(`Unknown animation "${name}". Available: ${ANIMATION_NAMES.join(", ")}`);
+    throw new Error(
+      `Unknown smooth animation "${name}". Available: ${SMOOTH_ANIMATION_NAMES.join(", ")}`,
+    );
   }
   return animation;
 }
 
-/** Apply an animation's channels to a rig, returning a new rig. */
-export function applyAnimation(rig: Rig, animation: Animation): Rig {
+/** Apply a smooth animation's channels to a rig, returning a new rig. */
+export function applySmoothAnimation(rig: Rig, animation: Animation): Rig {
   return applyChannels(rig, animation.channels);
 }
 
 /**
- * Build a rig already carrying an animation, ready to be handed to `evaluate()`.
+ * Build a rig carrying a smooth animation.
  *
- * The convenience entry point the pilot uses: `rigAt("runCycle")` inside a scene layer
- * and every frame of that layer articulates without any further setup.
+ * SMOOTH escape hatch: prefer `applyDiscreteAnimation` for the house style.
  */
-export function animatedRig(rig: Rig, animationName: string): Rig {
-  return applyAnimation(rig, getAnimation(animationName));
+export function smoothAnimatedRig(rig: Rig, animationName: string): Rig {
+  return applySmoothAnimation(rig, getSmoothAnimation(animationName));
 }
 
 /**
- * Convenience: a rig posed by an animation, dressed with a facial expression.
+ * Build a rig carrying the named DISCRETE animation.
  *
- * Layering order is animation first, then expression, so an expression can override a
- * face channel an animation touched without the two fighting.
+ * The default entry point for animating the character in this show's style.
+ */
+export function discreteAnimatedRig(rig: Rig, animationName: string): Rig {
+  return applyDiscreteAnimation(rig, getDiscreteAnimation(animationName));
+}
+
+/**
+ * Convenience: a rig posed by a DISCRETE animation, dressed with a facial expression.
+ *
+ * This is the full house-style character in one call: limited-animation body poses from
+ * named swaps, plus a face. Layering order is animation first, then expression, so an
+ * expression can override a face channel without the two fighting.
  */
 export function animatedRigWithExpression(
   rig: Rig,
   animationName: string | undefined,
   expressionName: string,
+  options?: { readonly smooth?: boolean },
 ): Rig {
-  const animated = animationName ? animatedRig(rig, animationName) : rig;
+  const animated = !animationName
+    ? rig
+    : options?.smooth
+      ? smoothAnimatedRig(rig, animationName)
+      : discreteAnimatedRig(rig, animationName);
+
   const expression = EXPRESSIONS[expressionName];
   if (!expression) {
     throw new Error(

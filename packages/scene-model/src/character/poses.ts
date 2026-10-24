@@ -127,6 +127,34 @@ export const WAVE: Pose = {
   },
 };
 
+/**
+ * Wave, second extreme: the forearm swung down and forward.
+ *
+ * Paired with `WAVE` in a two-pose cycle. In limited animation a wave is two drawings
+ * swapped on a beat, not a smoothly rotating arm — the swap is what gives it the snappy
+ * hand-drawn feel, and it is why this is a separate full pose rather than a keyframe on
+ * the forearm's rotation channel.
+ */
+export const WAVE_DOWN: Pose = {
+  name: "waveDown",
+  description: "Wave, second extreme: raised arm with the forearm swung down.",
+  channels: {
+    hips: root(0, 0, 0),
+    torso: limb(-3),
+    head: limb(4),
+    "upperArm-right": limb(-118),
+    // The forearm swings through the oscillation here.
+    "lowerArm-right": limb(16),
+    "hand-right": limb(-6),
+    "upperArm-left": limb(6),
+    "lowerArm-left": limb(-8),
+    "upperLeg-left": limb(3),
+    "lowerLeg-left": limb(-3),
+    "upperLeg-right": limb(-3),
+    "lowerLeg-right": limb(3),
+  },
+};
+
 /** Point: arm out to the side, level, finger-gun style per the sheet. */
 export const POINT: Pose = {
   name: "point",
@@ -265,18 +293,22 @@ export const TRIP: Pose = {
   name: "trip",
   description: "Tripping forward: torso pitched over, legs swept back, arms flung up.",
   channels: {
-    hips: root(-38, 0, -6),
-    torso: limb(-14),
-    head: limb(26),
-    "upperArm-left": limb(-118),
+    // The pitch is limited to ~30 degrees and the root is RAISED slightly rather than
+    // dropped, so the sprawled figure stays inside a normal camera frame. Falling
+    // further looks correct in isolation but crops the character at the frame edge,
+    // which is worse for the pilot than a slightly theatrical trip.
+    hips: root(-30, 2, 4),
+    torso: limb(-12),
+    head: limb(24),
+    "upperArm-left": limb(-112),
     "lowerArm-left": limb(-30),
-    "upperArm-right": limb(112),
+    "upperArm-right": limb(106),
     "lowerArm-right": limb(-34),
-    "upperLeg-left": limb(-58),
+    "upperLeg-left": limb(-46),
     "lowerLeg-left": limb(40),
     "foot-left": limb(-24),
-    "upperLeg-right": limb(-30),
-    "lowerLeg-right": limb(74),
+    "upperLeg-right": limb(-22),
+    "lowerLeg-right": limb(70),
     "foot-right": limb(-30),
   },
 };
@@ -342,6 +374,7 @@ export const VICTORY: Pose = {
 export const POSES: Readonly<Record<string, Pose>> = Object.freeze({
   neutral: NEUTRAL,
   wave: WAVE,
+  waveDown: WAVE_DOWN,
   point: POINT,
   armsUp: ARMS_UP,
   run: RUN,

@@ -221,14 +221,19 @@ export function WorkspaceShell({
           </div>
         </Panel>
 
-        {/* Row 2: divider spanning the centre column only */}
+        {/* Row 2: divider spanning the centre column only.
+            The timeline occupies row 3, BELOW this divider, so the timeline is
+            the lower/far side of it. That makes it a `direction = 1` pane: the
+            pane grows as the divider moves DOWN, exactly like the left pane
+            grows as its divider moves RIGHT. Passing -1 here inverted both the
+            arrow keys and the drag, so ArrowUp grew the timeline instead of
+            shrinking it toward its 140px minimum. */}
         <div className="row-start-2 col-start-3">
           <PaneDivider
             pane="timeline"
             orientation="horizontal"
             label="Resize timeline"
             panes={panes}
-            direction={-1}
           />
         </div>
 

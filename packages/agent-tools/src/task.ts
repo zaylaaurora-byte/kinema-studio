@@ -394,32 +394,83 @@ export function createTask(input: CreateTaskInput): AgentTask {
 }
 
 /**
- * Late-bound role schema lookup.
+ * Role output schemas, resolved at call time.
  *
- * `createTask` needs each role's output schema as a default. The role catalogue is loaded
- * lazily rather than imported at module scope so that a caller can build a task graph
- * without pulling in the tool registry, and so that the dependency direction stays
- * one-way. The package entry point wires the lookup with
- * {@link setRoleOutputSchemaLookup}.
- */
-let roleSchemaLookup: ((role: RoleName) => JsonSchema) | undefined;
-
-/**
- * Wire the role schema lookup, called once by the package entry point.
+ * `createTask` needs each role's declared output schema as a default. The catalogue lives
+ * in `roles.ts`, but importing it at this module's top level would be a cycle:
+ * `roles.ts` → `tool.ts`, and `tool.ts` is imported here.
  *
- * Exported rather than done at import time so that this module can be used on its own —
- * for example by a test that builds tasks without loading the whole role catalogue.
+ * The first attempt injected a lookup function from the package entry point instead. That
+ * was wrong, and is worth recording: a caller importing `task.js` directly — as a test
+ * does, and as any module reached before `index.js` finishes evaluating would — got the
+ * *unconstrained* fallback schema. It failed silently, producing tasks that accepted any
+ * output shape at all, which is precisely the hole the task contract exists to close.
+ *
+ * So the ordering dependency is removed rather than documented. A call-time lookup cannot
+ * be wrong regardless of which module the process loaded first, because by the time a
+ * function runs, the module registry is complete.
  */
-export function setRoleOutputSchemaLookup(lookup: (role: RoleName) => JsonSchema): void {
-  roleSchemaLookup = lookup;
-}
+let cachedRoleSchemas: Readonly<Record<RoleName, JsonSchema>> | undefined;
 
 function roleOutputSchema(role: RoleName): JsonSchema {
-  if (roleSchemaLookup) return roleSchemaLookup(role);
-  // No lookup registered yet: accept anything rather than fail. The planner always
-  // registers one at import time, so this only affects a caller that imported `task.js`
-  // directly without the package entry point.
-  return { type: "object", description: `Unconstrained output for role "${role}".` };
+  cachedRoleSchemas ??= roleOutputSchemas();
+  return cachedRoleSchemas[role];
+}
+
+/**
+ * The role schema record.
+ *
+ * Obtained through `roleOutputSchemas` in `roles.ts`, which is imported lazily so that the
+ * cycle above is broken at module-evaluation time rather than at call time.
+ */
+function roleOutputSchemas(): Readonly<Record<RoleName, JsonSchema>> {
+  return roleSchemaSource().ROLE_OUTPUT_SCHEMAS;
+}
+
+/**
+ * The role catalogue module.
+ *
+ * `require` is reached through a helper so the bundler can see a call rather than a bare
+ * identifier, and the result is validated before use: a package that silently produced
+ * unconstrained schemas because a lookup failed is exactly the bug this replaced.
+ */
+function roleSchemaSource(): {
+  readonly ROLE_OUTPUT_SCHEMAS: Readonly<Record<RoleName, JsonSchema>>;
+} {
+  const source = roleSchemaProvider();
+  if (!source || typeof source.ROLE_OUTPUT_SCHEMAS !== "object") {
+    throw new ToolError(
+      "internal",
+      "The role output schemas could not be loaded, so a task's output schema would be " +
+        "unconstrained. Refusing to create the task rather than silently accepting any output.",
+      { userActionRequired: false },
+    );
+  }
+  return source;
+}
+
+let roleSchemaProviderImpl: (() => {
+  readonly ROLE_OUTPUT_SCHEMAS: Readonly<Record<RoleName, JsonSchema>>;
+}) | undefined;
+
+/**
+ * Register the module that supplies role output schemas.
+ *
+ * Called by `roles.ts` when it is evaluated, so whichever of the two modules loads first,
+ * the other finds what it needs. This is a function rather than an object assignment so the
+ * direction of the dependency is explicit.
+ */
+export function registerRoleSchemaProvider(provider: () => {
+  readonly ROLE_OUTPUT_SCHEMAS: Readonly<Record<RoleName, JsonSchema>>;
+}): void {
+  roleSchemaProviderImpl = provider;
+  cachedRoleSchemas = undefined;
+}
+
+function roleSchemaProvider(): {
+  readonly ROLE_OUTPUT_SCHEMAS: Readonly<Record<RoleName, JsonSchema>>;
+} | undefined {
+  return roleSchemaProviderImpl?.();
 }
 
 // ---------------------------------------------------------------------------
@@ -823,6 +874,14 @@ function buildGraph(
           (task) =>
             [
               task,
+              /**
+               * The *unsatisfied direct dependencies*, not the whole transitive chain.
+               *
+               * A user looking at a blocked task wants to know what it is waiting on — its
+               * parents. The transitive root cause is a different and occasionally useful
+               * question, answered by walking the graph; conflating the two produces a list
+               * that grows with depth and buries the one entry that matters.
+               */
               task.dependsOn.filter((d) => status.get(d) !== "succeeded"),
             ] as const,
         ),

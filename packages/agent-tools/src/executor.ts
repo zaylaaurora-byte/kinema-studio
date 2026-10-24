@@ -241,7 +241,9 @@ export class Executor {
       startedAtMs: Number.isNaN(startedAtMs) ? 0 : startedAtMs,
     };
 
-    const emit = (event: Omit<AuditEvent, "sequence" | "elapsedMs" | "at"> & { at?: string }): void => {
+    const emit = (
+      event: Omit<AuditEvent, "sequence" | "elapsedMs" | "at"> & { readonly at?: string },
+    ): void => {
       state.sequence += 1;
       const at = event.at ?? now();
       const full: AuditEvent = {
@@ -275,6 +277,11 @@ export class Executor {
      * dispatching a task whose parent was just refused.
      */
     for (;;) {
+      /**
+       * `signal?.aborted` is typed as `boolean | undefined`; TypeScript narrows `=== true`
+       * to a false-only branch when the union collapses, so the check is written as a
+       * plain truthiness test over a normalised value.
+       */
       if (state.cancelled || signal?.aborted === true) {
         this.#cancelRemaining(state, graph, emit, now);
         break;
@@ -339,9 +346,17 @@ export class Executor {
       }
 
       for (const task of ready) {
-        if (state.cancelled || signal?.aborted === true) break;
-        await this.#dispatch(task, graph, state, emit, now, runId, pendingApprovalRequests);
+        // After the loop above, `signal?.aborted === true` has been proven false, so only a
+        // cancellation raised *during* a dispatch needs re-checking here.
+        if (state.cancelled) break;
+        await this.#dispatch(task, graph, state, emit, now, runId, pendingApprovalRequests, signal);
       }
+    }
+
+    // A cancellation observed mid-flight must still mark the queue stopped, so the result
+    // reports `cancelled` rather than looking like a run that simply ran out of work.
+    if (signal?.aborted === true && !state.cancelled) {
+      this.#cancelRemaining(state, graph, emit, now);
     }
 
     const finalStatus = this.#finalStatus(state, graph);
@@ -380,6 +395,15 @@ export class Executor {
     now: () => string,
     runId: string,
     pendingApprovals: ApprovalRequest[],
+    /**
+     * The run-level cancellation signal, threaded down so a tool's `ctx.signal` can
+     * reflect BOTH it and run-state cancellation.
+     *
+     * It is passed explicitly rather than captured from `execute`'s closure because tools
+     * need a live view: a long-running tool that reads `ctx.signal.aborted` mid-execution
+     * must see cancellation that happened after it started.
+     */
+    signal?: { readonly aborted: boolean },
   ): Promise<void> {
     const nowIso = now();
 
@@ -414,7 +438,10 @@ export class Executor {
         `Task "${task.taskId}" is estimated at ${task.cost.estimated.toFixed(4)} ` +
           `${task.cost.currency}, above the per-task cap of ${perTaskCap.toFixed(4)}. ` +
           `Dispatch refused; the task did not run.`,
-        { userActionRequired: true, toolName: task.tool },
+        {
+          userActionRequired: true,
+          ...(task.tool !== undefined ? { toolName: task.tool } : {}),
+        },
       );
       this.#fail(state, task, error, 0, emit, now, "block", "budget_refused");
       return;
@@ -439,7 +466,7 @@ export class Executor {
           `Dispatch refused; the task did not run.`,
         {
           userActionRequired: true,
-          toolName: task.tool,
+          ...(task.tool !== undefined ? { toolName: task.tool } : {}),
           detail:
             `Raise the cap, or reduce the scope of the plan. The cap is checked before ` +
             `dispatch rather than after, so this run has not spent the money.`,
@@ -494,7 +521,7 @@ export class Executor {
         kind: "approval_required",
         taskId: task.taskId,
         role: task.role,
-        tool: task.tool,
+        ...(task.tool !== undefined ? { tool: task.tool } : {}),
         message: `${request.reason} (estimated ${request.estimatedCost.toFixed(4)} ${request.currency}).`,
         cost: request.estimatedCost,
         data: { gates: request.gates },
@@ -550,7 +577,7 @@ export class Executor {
       kind: "task_started",
       taskId: task.taskId,
       role: task.role,
-      tool: task.tool,
+      ...(task.tool !== undefined ? { tool: task.tool } : {}),
       message: task.tool !== undefined
         ? `Running ${task.tool}.`
         : `Running ${task.role} reasoning step (no tool).`,
@@ -620,10 +647,15 @@ export class Executor {
           ? { projectId: task.referenceSnapshot.projectId }
           : {}),
         artifacts: this.#artifactsFor(task, state),
-        ...(this.#options.budget !== undefined || this.#options.maxTotalCost !== undefined
-          ? {}
-          : {}),
         now,
+        /**
+         * A live view of cancellation, not a snapshot.
+         *
+         * `state` is mutated by the run loop, and a tool that reads `ctx.signal.aborted`
+         * mid-execution must see the *current* value. Capturing a boolean here would hand a
+         * long-running tool a stale `false` and let it keep working after the user cancelled.
+         */
+        signal: { get aborted() { return state.cancelled || signal?.aborted === true; } },
         ...(this.#options.onEvent !== undefined
           ? {
               report: (message: string, data?: Readonly<Record<string, unknown>>): void => {
@@ -731,7 +763,7 @@ export class Executor {
       task,
       lastError ??
         new ToolError("internal", `Task "${task.taskId}" ended without a result.`, {
-          toolName: task.tool,
+          ...(task.tool !== undefined ? { toolName: task.tool } : {}),
         }),
       attempt,
       emit,
@@ -800,7 +832,7 @@ export class Executor {
       kind: kindOverride ?? "task_failed",
       taskId: task.taskId,
       role: task.role,
-      tool: task.tool,
+      ...(task.tool !== undefined ? { tool: task.tool } : {}),
       message: error.message,
       data: { code: error.code, retryable: error.retryable, onFailure },
     });
