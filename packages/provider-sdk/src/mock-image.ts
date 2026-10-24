@@ -137,7 +137,16 @@ function adler32(data: Buffer): number {
     a = (a + byte) % 65521;
     b = (b + a) % 65521;
   }
-  return ((a << 16) | b) >>> 0;
+  // Adler-32 places s2 (b) in the HIGH 16 bits and s1 (a) in the LOW 16 bits.
+  //
+  // This was originally written as ((a << 16) | b), a natural but incorrect reading of
+  // the definition. It produces a byte-swapped checksum: for the RFC 1950 published
+  // vector "Wikipedia" it yielded 0x039811E6 instead of the correct 0x11E60398, and
+  // Node's zlib disagreed on every input longer than one byte. Strict decoders reject
+  // that, so the PNGs were only readable by lenient parsers.
+  //
+  // Pinned by adler32.test.ts against the published vector and against node:zlib.
+  return ((b << 16) | a) >>> 0;
 }
 
 /** Derive a stable hue from the prompt so different prompts look different. */

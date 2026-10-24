@@ -47,3 +47,7 @@ pnpm-debug.log*
 # Local databases
 *.sqlite
 *.sqlite3
+# Generated test fixtures and scratch renders
+tmp/
+packages/*/tmp/
+*fixture*.png
