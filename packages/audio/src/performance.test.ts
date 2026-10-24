@@ -327,7 +327,8 @@ describe("planDirection — refusing to fabricate", () => {
           expect(caps.supportsPause).toBe(true);
         }
       }
-      // Every requested control must be accounted for somewhere in the plan.
+      // Every requested control must be accounted for somewhere in the plan. This is the
+      // anti-silent-drop invariant: nothing a caller asked for may simply vanish.
       const accounted = new Set([
         ...plan.native.map((n) => n.control),
         ...plan.emulated.map((e) => e.control),
@@ -344,6 +345,11 @@ describe("planDirection — refusing to fabricate", () => {
       ] as const) {
         expect(accounted.has(control)).toBe(true);
       }
+      // And nothing may be reported twice: a control is native, emulated or refused,
+      // never two of those at once.
+      expect(plan.native.length + plan.emulated.length + plan.unhonourable.length).toBe(
+        accounted.size,
+      );
     }
   });
 
@@ -361,8 +367,8 @@ describe("planDirection — refusing to fabricate", () => {
 describe("planDirection against the mock provider's real capabilities", () => {
   it("reports the mock as unable to do emotion but able to do pauses", () => {
     // The mock declares only pause and nonverbal support. So a directed host line must
-    // come back with emotion refused and the pauses handled natively — which is exactly
-    // the honest picture of what this adapter does.
+    // come back with emotion and intensity refused, and the pauses handled natively —
+    // which is exactly the honest picture of what this adapter does.
     const plan = planDirection(
       DEMON_HOST_DIRECTION,
       MOCK_VOICE_CAPABILITIES,
@@ -372,9 +378,15 @@ describe("planDirection against the mock provider's real capabilities", () => {
     const refused = plan.unhonourable.map((u) => u.control);
     expect(refused).toContain("emotion");
     expect(refused).toContain("intensity");
-    expect(refused).toContain("pitchShift");
+
+    // Pitch, by contrast, is EMULATED rather than refused: varispeed post-processing is
+    // always available, so there is no honest reason to report it as impossible.
+    expect(refused).not.toContain("pitchShift");
+    const pitch = plan.emulated.find((e) => e.control === "pitchShift");
+    expect(pitch?.mechanism).toBe("post-processing");
 
     // Pauses ARE supported natively by the mock.
+    const nativeControls = plan.native.map((n) => n.control);
     expect(nativeControls).toContain("pauseBeforeMs");
     expect(nativeControls).toContain("pauseAfterMs");
     // Since they are native, the caller must not insert them again.
@@ -408,14 +420,25 @@ describe("estimateBaseDurationMs", () => {
     expect(ellipsis).toBeGreaterThan(fullStop);
   });
 
-  it("is documented as an estimate, and is labelled as one", () => {
+  it("is documented as an estimate, and produces a plausible order of magnitude", () => {
     // Guarding the honesty claim: the function's own docs say the true duration must be
-    // measured from returned audio. This asserts it produces a plausible order of
-    // magnitude rather than a precise claim: a 165 wpm baseline puts this near 3.5s.
-    const duration = estimateBaseDurationMs(
-      "I have been waiting in this basement for one thousand years and nobody has offered me a biscuit",
-    );
-    expect(duration).toBeGreaterThan(2500);
-    expect(duration).toBeLessThan(5500);
+    // measured from returned audio, so this only asserts plausibility, not precision.
+    //
+    // The bound is derived rather than guessed. The sentence is 18 words; a 165 wpm
+    // baseline is 60000/165 = 363.6 ms per word, so the floor is 18 * 363.6 = 6545 ms
+    // before word-length and punctuation adjustments. The function returned 6327 ms,
+    // which is slightly BELOW the flat baseline because short words ("I", "in", "for",
+    // "me", "a") carry a length factor under 1.0. So the correct range brackets that
+    // baseline, and a tighter upper bound would be asserting something false.
+    const text =
+      "I have been waiting in this basement for one thousand years and nobody has offered me a biscuit";
+    const words = text.split(/\s+/).filter((w) => w.length > 0).length;
+    expect(words).toBe(18);
+
+    const flatBaselineMs = words * (60_000 / 165);
+    const duration = estimateBaseDurationMs(text);
+
+    expect(duration).toBeGreaterThan(flatBaselineMs * 0.9);
+    expect(duration).toBeLessThan(flatBaselineMs * 1.2);
   });
 });

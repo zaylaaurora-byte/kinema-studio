@@ -351,21 +351,33 @@ def alpha_to_bgra(bgr: np.ndarray, alpha: np.ndarray) -> np.ndarray:
     return np.dstack([bgr, a])
 
 
-def unassociate_rgb(bgr: np.ndarray, alpha: np.ndarray) -> np.ndarray:
+def unassociate_rgb(bgr: np.ndarray, alpha: np.ndarray,
+                    bg_bgr: np.ndarray | None = None) -> np.ndarray:
     """Recover the *true* foreground colour on partially transparent pixels.
 
     WHY: the source PNGs are flat composites, so a pixel at alpha=0.5 is
     literally `0.5*fg + 0.5*bg`. If we ship that RGB next to alpha=0.5, any
     compositor applies alpha again and the edge comes out too light AND carries
-    a beige tint. Solving fg = (observed - (1-a)*bg) / a removes both. We only
-    do this where alpha is meaningfully above zero; near alpha=0 the division
-    is numerically hopeless and the colour is irrelevant anyway.
+    a beige tint. Solving fg = (observed - (1-a)*bg) / a removes both.
+
+    `bg_bgr` may be a single colour or a per-pixel array of the same shape as
+    `bgr`, which lets callers pass the fitted background surface. We only do
+    this where alpha is meaningfully above zero; near alpha=0 the division is
+    numerically hopeless and the colour is invisible anyway.
     """
     a = np.clip(alpha, 0.0, 1.0)[..., None]
-    safe = a > 0.02
-    fg = np.where(safe, (bgr.astype(np.float32) - (1.0 - a) * BACKGROUND_NEUTRAL)
-                  / np.maximum(a, 1e-3), bgr.astype(np.float32))
+    bg = (BACKGROUND_NEUTRAL if bg_bgr is None
+          else np.asarray(bg_bgr, np.float32))
+    safe = a > 0.15
+    fg = np.where(safe,
+                  (bgr.astype(np.float32) - (1.0 - a) * bg) / np.maximum(a, 1e-3),
+                  bgr.astype(np.float32))
     return np.clip(fg, 0, 255).astype(np.uint8)
+
+
+def background_neutral_for(hexstr: str) -> np.ndarray:
+    """BGR float array for a background hex, used as the fallback blend target."""
+    return bgr_of(hexstr)
 
 
 # Placeholder used only by unassociate_rgb; callers that care pass their own.

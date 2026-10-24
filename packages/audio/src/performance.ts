@@ -470,13 +470,30 @@ export function planDirection(
     } else {
       // Silence insertion is ALWAYS available: it needs no cooperation from the
       // provider, only from the timeline. So this never becomes unhonourable.
-      emulate(
-        "pauseBeforeMs",
-        "silence-insertion",
-        `prepend ${direction.pauseBeforeMs}ms of digital silence`,
-        "Silence is exact and needs nothing from the provider; it does mean the returned " +
-          "audio is longer than the provider's stated duration.",
-      );
+      //
+      // BOTH ends are reported independently when both were requested. An earlier
+      // version emitted a single entry for `pauseBeforeMs` and let `pauseAfterMs` fall
+      // through unmentioned — which is precisely the silent drop this module exists to
+      // prevent, and it is caught by the "nothing may be reported twice, nothing may
+      // vanish" invariant in performance.test.ts.
+      if (requested.has("pauseBeforeMs")) {
+        emulate(
+          "pauseBeforeMs",
+          "silence-insertion",
+          `prepend ${direction.pauseBeforeMs}ms of digital silence`,
+          "Silence is exact and needs nothing from the provider; it does mean the returned " +
+            "audio is longer than the provider's stated duration.",
+        );
+      }
+      if (requested.has("pauseAfterMs")) {
+        emulate(
+          "pauseAfterMs",
+          "silence-insertion",
+          `append ${direction.pauseAfterMs}ms of digital silence`,
+          "Silence is exact and needs nothing from the provider; it does mean the returned " +
+            "audio is longer than the provider's stated duration.",
+        );
+      }
     }
   }
 

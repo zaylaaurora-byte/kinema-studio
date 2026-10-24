@@ -83,11 +83,17 @@ export const HEAD_BOTTOM = SHOULDER_HEIGHT + NECK_LENGTH;
 /** Half the distance between the two hip joints. */
 export const HIP_HALF_WIDTH = 4.2;
 
-/** Half the distance between the two shoulder joints. */
-export const SHOULDER_HALF_WIDTH = 7.5;
+/**
+ * Half the distance between the two shoulder joints.
+ *
+ * Set wider than the torso radius so the arms hang clear of the body rather than
+ * merging into it. On the sheet there is always a visible outline gap between arm and
+ * torso, and that gap is most of what makes the silhouette readable.
+ */
+export const SHOULDER_HALF_WIDTH = 9.5;
 
-/** Radius of the soft tube torso. Wide enough to meet the shoulders. */
-export const TORSO_HALF_WIDTH = 7.5;
+/** Radius of the soft tube torso. */
+export const TORSO_HALF_WIDTH = 7.2;
 
 export const UPPER_LEG_LENGTH = 18;
 export const LOWER_LEG_LENGTH = 18;
@@ -308,18 +314,49 @@ export function buildHumanRig(id = "silent-human"): Rig {
   });
 
   // --- Face -----------------------------------------------------------------
+  //
   // Head-local space: origin is the head centre, +y is up.
-  // The head radius is 11, so these offsets are expressed as fractions of it and stay
-  // correct if the head is ever resized.
+  //
+  // HOW THE FACE IS DRAWN, GIVEN THE ONE-STYLE-PER-RIG LIMIT
+  // --------------------------------------------------------
+  // `evaluate()` applies a single style to the whole rig, so the face parts cannot be
+  // given a black fill of their own — they inherit the white body fill, which would
+  // render the eyes as white blobs on a white head.
+  //
+  // The way out is to draw the face the way ink actually works: as STROKED LINES with
+  // no fill. The shared style's stroke is black and its fill is white, so a closed
+  // `path` outline reads as a black mark on the white head. Every feature below is
+  // therefore a `path` that traces a shape, plus a second concentric path where the
+  // mark needs thickness.
+  //
+  // This also means an expression's `scaleY` on an eye squashes a black outline, which
+  // is exactly the "elastic" behaviour the sheet describes for both eyes and mouth.
 
   const EYE_Y = HEAD_RADIUS * 0.12;
-  const EYE_DX = HEAD_RADIUS * 0.34;
-  const EYE_RX = HEAD_RADIUS * 0.15;
+  const EYE_DX = HEAD_RADIUS * 0.36;
+  const EYE_RX = HEAD_RADIUS * 0.17;
   const EYE_RY = HEAD_RADIUS * 0.26;
-  const BROW_Y = HEAD_RADIUS * 0.5;
-  const BROW_W = HEAD_RADIUS * 0.46;
-  const BROW_H = HEAD_RADIUS * 0.12;
-  const MOUTH_Y = -HEAD_RADIUS * 0.4;
+  // Brows sit just above the eyes, not up on the crown. At 0.42 the brow bar's top edge
+  // lands around 0.6 of the radius, leaving a clear forehead margin inside the circle.
+  const BROW_Y = HEAD_RADIUS * 0.42;
+  const BROW_HALF_W = HEAD_RADIUS * 0.22;
+  // Mouth sits between the eyes and the chin, biased toward the chin as on the sheet.
+  const MOUTH_Y = -HEAD_RADIUS * 0.34;
+  const MOUTH_RX = HEAD_RADIUS * 0.24;
+  const MOUTH_RY = HEAD_RADIUS * 0.12;
+
+  /**
+   * A closed ellipse traced as a path, so it renders as an outline rather than a fill.
+   *
+   * Two half-arcs, which is the standard way to express an ellipse in SVG path data
+   * without needing the `ellipse` element's fill.
+   */
+  const ellipsePath = (rx: number, ry: number): Shape => ({
+    kind: "path",
+    d:
+      `M ${-rx} 0 A ${rx} ${ry} 0 0 1 ${rx} 0 ` +
+      `A ${rx} ${ry} 0 0 1 ${-rx} 0 Z`,
+  });
 
   for (const side of ["left", "right"] as const) {
     const sign = side === "left" ? 1 : -1;
@@ -329,8 +366,9 @@ export function buildHumanRig(id = "silent-human"): Rig {
       parentId: "head",
       localPosition: { x: sign * EYE_DX, y: EYE_Y },
       zIndex: 22,
-      // Tall oval eye, the sheet's default. Collapsed to a dot, it is a surprise take.
-      shapes: [{ kind: "ellipse", rx: EYE_RX, ry: EYE_RY }],
+      // Tall oval eye. Drawn twice: an outer ring plus a tighter inner ring, so the eye
+      // reads as a heavy ink mark at small sizes instead of a hairline.
+      shapes: [ellipsePath(EYE_RX, EYE_RY), ellipsePath(EYE_RX * 0.55, EYE_RY * 0.55)],
     });
 
     add({
@@ -338,8 +376,16 @@ export function buildHumanRig(id = "silent-human"): Rig {
       parentId: "head",
       localPosition: { x: sign * EYE_DX, y: BROW_Y },
       zIndex: 23,
-      // Thick angled bar. Rotation is what makes a brow angry or worried.
-      shapes: [{ kind: "rect", width: BROW_W, height: BROW_H, rx: BROW_H / 2 }],
+      // A thick horizontal bar drawn as a closed path. Rotation is what makes a brow
+      // angry, worried or smug.
+      shapes: [
+        {
+          kind: "path",
+          d:
+            `M ${-BROW_HALF_W} ${EYE_RY * 0.5} L ${BROW_HALF_W} ${EYE_RY * 0.5} ` +
+            `L ${BROW_HALF_W} ${-EYE_RY * 0.5} L ${-BROW_HALF_W} ${-EYE_RY * 0.5} Z`,
+        },
+      ],
     });
   }
 
@@ -348,8 +394,9 @@ export function buildHumanRig(id = "silent-human"): Rig {
     parentId: "head",
     localPosition: { x: 0, y: MOUTH_Y },
     zIndex: 21,
-    // A modest closed-mouth lens that scales into a grin, an "O" or a wail.
-    shapes: [{ kind: "ellipse", rx: HEAD_RADIUS * 0.24, ry: HEAD_RADIUS * 0.11 }],
+    // A lens-shaped mouth, drawn as a closed path. Scaling it stretches the grin; the
+    // same part squashed flat is a grimace and stretched tall is a wail.
+    shapes: [ellipsePath(MOUTH_RX, MOUTH_RY)],
   });
 
   // -------------------------------------------------------------------------

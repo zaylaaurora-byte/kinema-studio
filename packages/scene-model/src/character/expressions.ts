@@ -54,11 +54,11 @@ function at(value: number): Channel {
  * in `buildHumanRig` and are asserted against it by `human-rig.test.ts`.
  */
 export const FACE_REST = {
-  eyeLeft: { x: HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.12 },
-  eyeRight: { x: -HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.12 },
-  browLeft: { x: HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.5 },
-  browRight: { x: -HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.5 },
-  mouth: { x: 0, y: -HEAD_RADIUS * 0.4 },
+  eyeLeft: { x: HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.12 },
+  eyeRight: { x: -HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.12 },
+  browLeft: { x: HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.42 },
+  browRight: { x: -HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.42 },
+  mouth: { x: 0, y: -HEAD_RADIUS * 0.34 },
 } as const;
 
 /**

@@ -85,14 +85,17 @@ export const NEUTRAL: Pose = {
     hips: root(0, 0, 0),
     torso: limb(0),
     head: limb(0),
-    "upperArm-left": limb(4),
-    "lowerArm-left": limb(-6),
-    "upperArm-right": limb(-4),
-    "lowerArm-right": limb(6),
-    "upperLeg-left": limb(2),
-    "lowerLeg-left": limb(-2),
-    "upperLeg-right": limb(-2),
-    "lowerLeg-right": limb(2),
+    // Arms hang almost straight but splay outward a few degrees, which is what stops a
+    // tube-limbed figure reading as a flat stick. The forearm bends back in slightly so
+    // the hand sits beside the hip rather than flaring out.
+    "upperArm-left": limb(7),
+    "lowerArm-left": limb(-4),
+    "upperArm-right": limb(-7),
+    "lowerArm-right": limb(4),
+    "upperLeg-left": limb(1.5),
+    "lowerLeg-left": limb(-1.5),
+    "upperLeg-right": limb(-1.5),
+    "lowerLeg-right": limb(1.5),
   },
 };
 

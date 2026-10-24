@@ -216,12 +216,11 @@ function synthesiseLine(
   const prng = createPrng(textHash ^ seedOffset);
 
   // The fundamental is derived from the text hash, so different lines sit at different
-  // pitches, then offset by the direction's pitch shift. `pitchShift` is applied here as
-  // a frequency offset AND later as a varispeed pass — but note the varispeed call is
-  // made with the shift only when the direction is applied to the raw waveform below,
-  // so the two do not compound.
+  // pitches. `direction.pitchShift` is folded in here as a frequency offset, and it is
+  // applied EXACTLY ONCE — no varispeed pass runs afterwards, so the shift cannot
+  // compound and the timing is unaffected.
   const hashPitch = HOST_BASE_HZ + (textHash % 18);
-  const words_per_minute = 165 * direction.pace;
+  const wordsPerMinute = 165 * direction.pace;
 
   // Timing per word. Pace is applied to the spoken body only; inter-word gaps shrink
   // slightly with pace as well, because a faster read also closes up its gaps, but they
@@ -274,6 +273,13 @@ function synthesiseLine(
     parts.push(applyEnvelope(voiced, sampleRate, attackMs, releaseMs));
 
     // Inter-word gap. Punctuation extends it; everything extends it a little.
+    //
+    // The gap buffer is allocated in FRAMES, matching the word buffers (which are also
+    // frame-length, since `sawtooth` generates one value per frame). `concatAll` then
+    // broadcasts the monophonic stream to `channels` as it concatenates. Allocating this
+    // as `frames * channels` was the bug that made stereo totals odd: the buffers would
+    // disagree about their unit and the final sample count would not divide by the
+    // channel count, so encodeWav rejected the buffer.
     const gapMs = word.gapMs / direction.pace;
     if (gapMs > 0) {
       parts.push(new Float64Array(Math.round((gapMs / 1000) * sampleRate)));
@@ -295,11 +301,38 @@ function synthesiseLine(
 
   const speechSeconds = mono.length / channels / sampleRate;
 
-  // Insert real silence to the exact requested duration.
-  const leadingFrames = Math.round((plan.leadingSilenceMs / 1000) * sampleRate);
-  const trailingFrames = Math.round((plan.trailingSilenceMs / 1000) * sampleRate);
+  // ── PAUSES ────────────────────────────────────────────────────────────────
+  //
+  // This is where the mock ACTUALLY honours `pauseBeforeMs` / `pauseAfterMs`, and there
+  // are two ways the values can arrive, so both are read:
+  //
+  //   - `plan.leadingSilenceMs` / `trailingSilenceMs` — the caller must insert the
+  //     silence itself, because the provider has no pause control.
+  //   - `plan.native` entries for `pauseBeforeMs` / `pauseAfterMs` — the provider claims
+  //     it applies the pause itself. The mock declares `supportsPause: true` and therefore
+  //     lands in this branch, so the silence has to be inserted HERE.
+  //
+  // An earlier version read ONLY the first pair. Since the mock declares native pause
+  // support, those were always 0 and every requested pause was silently discarded — the
+  // audio came back flat while the plan claimed the pause had been applied. It is exactly
+  // the class of failure the capability model exists to prevent, and it was caught by
+  // measuring returned sample counts rather than trusting the plan.
+  const nativePause = (control: "pauseBeforeMs" | "pauseAfterMs"): number => {
+    const entry = plan.native.find((n) => n.control === control);
+    return typeof entry?.value === "number" ? entry.value : 0;
+  };
 
-  const out = new Float64Array((leadingFrames + mono.length / channels + trailingFrames) * channels);
+  const leadingMs = plan.leadingSilenceMs + nativePause("pauseBeforeMs");
+  const trailingMs = plan.trailingSilenceMs + nativePause("pauseAfterMs");
+
+  // Every length below is in FRAMES, and the buffer is FRAMES * channels. Mixing the two
+  // units is what produced an odd sample count for stereo earlier and made encodeWav
+  // reject the buffer; keeping one unit throughout removes the whole class of error.
+  const bodyFrames = mono.length / channels;
+  const leadingFrames = Math.round((leadingMs / 1000) * sampleRate);
+  const trailingFrames = Math.round((trailingMs / 1000) * sampleRate);
+
+  const out = new Float64Array((leadingFrames + bodyFrames + trailingFrames) * channels);
   out.set(mono, leadingFrames * channels);
 
   return {
