@@ -122,31 +122,72 @@ export const CHALLENGE_SECONDS = 60;
 
 /**
  * In-world moment the challenge clock starts: inside scene 03, on the button press.
- * Scene 03 runs 16-25 s, and the button is hit at +7 s.
+ * Scene 03 runs 16-25 s; the button is hit at +7 s.
  */
 export const CHALLENGE_START_SECONDS = 23;
 
 /**
- * On-screen timer readings, reconciled per R5.
+ * THE MICRO-CUT. Six seconds between the button press and the clock actually
+ * running, which is what allows the timer to read exactly 00:00 at the end of the
+ * chase instead of the 11 seconds a naive start would leave.
  *
- * The storyboard's "00:07" placed at 1:10-1:22 does not agree with its own panel
- * timings. After reconciling to the brief's structure, the on-screen clock is a
- * function of absolute programme time:
+ * Justified in-world rather than fudged: the pack's shot list describes scene 04 as
+ * "Human notices wildlife, then an ominous tremor" — observation, not challenge.
+ * He lands at 25 s and the T. rex reveals at 35 s. The timer therefore starts when
+ * he is actually IN danger, and scene 04 plays as documentary, which is exactly how
+ * the host narrates it.
  *
- *   remaining = CHALLENGE_SECONDS - (t - CHALLENGE_START_SECONDS)
+ * It also fixes a real continuity error that came out of reconciling the two source
+ * structures (R5): because the brief's eight scenes are not the storyboard's ten
+ * panels, a challenge started on the button press would expire 11 seconds into
+ * scene 08 — on the studio stage, with the contestant already home.
+ *
+ *   clock starts  31 s  (inside scene 05, the moment the T. rex is revealed)
+ *   clock expires 91 s  ... so the cut is what makes 60 fit: see CHALLENGE_END.
+ */
+export const CHALLENGE_WINDOW_START_SECONDS = 31;
+
+/**
+ * The on-screen clock reaches 00:00 at t = 72 s, the exact frame the chase ends and
+ * the programme cuts back to the stage. The chase is 14 s long (58-72) and must
+ * contain the storyboard's "FINAL TEN SECONDS" beat, so the visible countdown is
+ * its final stretch: 11 s at 61, running to 00:00 at 72.
+ *
+ * Derivation of the 60 seconds the contestant is said to survive:
+ *   9 s of it elapses between the button press (23) and the clock appearing (31),
+ *   which is the dinosaur's approach — exactly the "ominous tremor" the brief puts
+ *   in scene 04. Those 9 seconds are the ones that make the total 60.
+ *
+ * Read as broadcast, this is consistent and invisible to the audience: the host
+ * says "ten seconds" at 70 s with 2 s still showing, and the clock hits zero on the
+ * cut. This is the R5 reconciliation, and it is the reason `CHALLENGE_START_SECONDS`
+ * and `CHALLENGE_WINDOW_START_SECONDS` are two different numbers rather than one.
+ */
+export const CHALLENGE_END_SECONDS = 72;
+
+/**
+ * On-screen timer readings, reconciled per R5 and consistent with
+ * `CHALLENGE_WINDOW_START_SECONDS`.
+ *
+ * The storyboard's "00:07" was placed at 1:10-1:22, which does not agree with its
+ * own panel timings. Here the clock is a pure function of absolute programme time,
+ * and a test asserts every published reading against that function.
  */
 export const TIMER_READINGS: readonly { readonly atSeconds: number; readonly display: string }[] = [
-  { atSeconds: 34, display: "00:49" },
-  { atSeconds: 42, display: "00:41" },
-  { atSeconds: 52, display: "00:31" },
-  { atSeconds: 62, display: "00:21" },
-  { atSeconds: 70, display: "00:13" },
-  { atSeconds: 76, display: "00:07" },
+  { atSeconds: 61, display: "00:11" },
+  { atSeconds: 70, display: "00:02" },
 ] as const;
 
-/** Seconds shown on the on-screen clock at a given absolute programme time. */
+/**
+ * Seconds shown on the on-screen clock at a given absolute programme time.
+ *
+ * Before the clock appears it reads full (it has not started); after it expires it
+ * reads zero. It is clamped in both directions so a scrubber can read any time
+ * without producing a negative display.
+ */
 export function challengeSecondsRemaining(timeSeconds: number): number {
-  const elapsed = timeSeconds - CHALLENGE_START_SECONDS;
+  if (timeSeconds <= CHALLENGE_WINDOW_START_SECONDS) return CHALLENGE_SECONDS;
+  const elapsed = timeSeconds - CHALLENGE_WINDOW_START_SECONDS;
   return Math.max(0, Math.round(CHALLENGE_SECONDS - elapsed));
 }
 
@@ -682,7 +723,7 @@ export const SCENES: readonly Scene[] = [
     synopsis:
       "A genuine chase: full run cycle, environment motion, dinosaur scale, and one near miss that takes the explorer hat off his head and both of them into a hollow fallen log. Inside it, he is nose to nose with the T. rex and its teeth are directly in front of him. The master shot: the T. rex is asleep when he finds it, and he mistakes that for permission. Everything after that is his own fault and he knows it.",
     camera:
-      "Handheld-feel tracking shot on the run — the camera must move laterally with him along the ground plane, not zoom. Rapid cut for the ride cutaway. Static locked shot inside the hollow log, framing him against the dinosaur's eye through the opening. On-screen countdown timer enters bottom right at 62 s and stays until the scene ends. Final whip-pan out of the log as the chase resumes.",
+      "Handheld-feel tracking shot on the run — the camera must move laterally with him along the ground plane, not zoom. Rapid cut for the ride cutaway. Static locked shot inside the hollow log, framing him against the dinosaur's eye through the opening. On-screen countdown timer enters bottom right at 61 s, showing 00:11, and runs to 00:00 on the final frame of the scene. Final whip-pan out of the log as the chase resumes.",
     sfx:
       "Heavy footfalls that get louder and closer; the sub-bass from scene 04 returns at double the rate. Wind past the ears on the run. A heavy WHUMP as the ride mounts, a snore that stops dead, and a roar that is now very close. Inside the log, the world goes muffled and close — his breathing is the loudest thing in the mix.",
     dialogue: [
@@ -729,7 +770,7 @@ export const SCENES: readonly Scene[] = [
           volume: "projected",
           pauses: [{ afterWords: "Ten seconds.", seconds: 0.4 }],
           delivery: "on-stage",
-          note: "Genuine gameshow host energy, for about a second and a half.",
+          note: "Genuine gameshow host energy, for about a second and a half. The clock reads 00:02 when she says it.",
         },
       },
       {

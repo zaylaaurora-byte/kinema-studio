@@ -1,0 +1,23 @@
+{
+  "name": "@kinema/bad-example",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bad Example — Pilot 01 production data: script, scene plan and timeline projection.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rimraf .turbo dist tmp"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

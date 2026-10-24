@@ -156,7 +156,14 @@ export type HostPose =
   | "LYING DOWN"
   | "POINTING"
   | "LEANING"
-  | "SITTING ON DESK";
+  | "SITTING ON DESK"
+  /**
+   * Not a drawn study on sheet 01 — it is composed from the THINKING expression
+   * head mounted on the LEANING pose study, which the sheet already shows as a
+   * head-swap line-up. Named explicitly so the composition is deliberate rather
+   * than an improvisation by whoever builds the shot.
+   */
+  | "THINKING (COMPOSITE)";
 
 /** Who is on screen. */
 export type CharacterId = "host" | "human" | "trex" | "sauropod" | "audience";
@@ -342,7 +349,7 @@ export const SCENE_PLANS: readonly ScenePlan[] = [
       {
         beat: "Face-first landing in the dirt.",
         expression: "SHOCKED",
-        pose: "LIE DOWN",
+        pose: "LEAN BACK",
         action: "TRIP-FALL",
         wardrobe: "explorer-hat-backpack",
         note: "Starts the scene already falling. Hat stays on; backpack takes the worst of it.",
@@ -520,7 +527,7 @@ export const SCENE_PLANS: readonly ScenePlan[] = [
       {
         beat: "The near miss takes the hat off his head.",
         expression: "SHOCKED",
-        pose: "DUCK",
+        pose: "LEAN BACK",
         action: "DUCK",
         wardrobe: "explorer-hat-only",
         note: "Teeth pass above him; the hat layer detaches and spins off frame. From here on it is gone until scene 08, where it returns in his hands.",
@@ -528,7 +535,7 @@ export const SCENE_PLANS: readonly ScenePlan[] = [
       {
         beat: "The bad decision, properly: the T. rex is asleep, and he climbs on.",
         expression: "SILLY",
-        pose: "CLIMB",
+        pose: "LEAN FORWARD",
         action: "CLIMB",
         wardrobe: "plain-white",
         note: "RECONCILIATION R4. The dinosaur is asleep — snoring, eye closed — when he finds it. He takes stillness as consent. This is the storyboard's dinosaur-ride gag, compressed to one ~3 s cutaway so it cannot break the chase, and motivated so that the episode can still end 2-0. The backpack is lost here (R8).",
@@ -586,7 +593,7 @@ export const SCENE_PLANS: readonly ScenePlan[] = [
       {
         beat: "'...Okay, that's actually clever.'",
         expression: "surprised",
-        pose: "THINKING",
+        pose: "THINKING (COMPOSITE)",
         note: "One full second of dead air first. Hand to chin, eyes flicked sideways as though checking nobody heard her.",
       },
     ],

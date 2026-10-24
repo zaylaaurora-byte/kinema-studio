@@ -110,6 +110,7 @@ export function buildFfmpegArgs(options: {
   width: number;
   height: number;
   fps: number;
+  outputPath: string;
   audioPath?: string | undefined;
   crf?: number | undefined;
   preset?: string | undefined;
