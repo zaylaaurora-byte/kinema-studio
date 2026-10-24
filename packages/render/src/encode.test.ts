@@ -410,14 +410,21 @@ describe("backpressure — 300 frames at 720p", () => {
 
       const elapsedMs = Date.now() - started;
       const growthMb = (peakRss - baselineRss) / (1024 * 1024);
-      const fileMb = (await stat(outputPath)).size / (1024 * 1024);
+      const fileBytes = (await stat(outputPath)).size;
+      const fileMb = fileBytes / (1024 * 1024);
 
       console.log(
         `[backpressure] 300 frames @1280x720 in ${(elapsedMs / 1000).toFixed(1)}s ` +
           `(${(elapsedMs / 300).toFixed(0)} ms/frame)\n` +
           `  peak RSS growth: ${growthMb.toFixed(1)} MB (baseline ${(baselineRss / 1048576).toFixed(0)} MB)\n` +
-          `  mp4 size: ${fileMb.toFixed(1)} MB`,
+          `  mp4 size: ${fileBytes} B (${fileMb.toFixed(2)} MB)`,
       );
+
+      // The fixture is a small white-on-black character on a few hundred pixels of a
+      // 720p canvas, so nearly every frame is a flat black field and x264 compresses it
+      // hard. The size floor here is deliberately low; the point of this assertion is
+      // that a real, non-trivial file was produced, not that it is large.
+      expect(fileBytes).toBeGreaterThan(5000);
 
       expect(result.frameCount).toBe(300);
 

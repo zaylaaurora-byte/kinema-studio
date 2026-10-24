@@ -20,8 +20,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CHALLENGE_END_SECONDS,
   CHALLENGE_SECONDS,
   CHALLENGE_START_SECONDS,
+  CHALLENGE_WINDOW_START_SECONDS,
   SCENES,
   TIMER_READINGS,
   allDialogue,
@@ -252,6 +254,7 @@ describe("expression and acting-state coverage", () => {
       "CONFUSED",
       "CURIOUS",
       "DETERMINED",
+      "DISAPPOINTED",
       "EXCITED",
       "HAPPY",
       "LAUGHING",
@@ -571,14 +574,17 @@ describe("dialogue integrity", () => {
 describe("on-screen timer continuity", () => {
   it("derives the on-screen clock from the scene structure", () => {
     // The storyboard's timer read 00:07 at 1:10-1:22, which does not agree with its
-    // own panel timings. Recomputed against the brief's structure instead.
-    expect(challengeSecondsRemaining(CHALLENGE_START_SECONDS)).toBe(CHALLENGE_SECONDS);
-    expect(challengeSecondsRemaining(23)).toBe(60);
-    expect(challengeSecondsRemaining(83)).toBe(0);
-    expect(challengeSecondsRemaining(0)).toBe(60);
-
-    // Never negative, even if the clock is read after the programme ends.
+    // own panel timings. Recomputed against the brief's structure instead (R5).
+    //
+    // The clock has three phases: not yet started (reads full), running, and
+    // expired (reads zero). All three are clamped so a scrubber can read any time.
+    expect(challengeSecondsRemaining(0)).toBe(CHALLENGE_SECONDS);
+    expect(challengeSecondsRemaining(CHALLENGE_WINDOW_START_SECONDS)).toBe(CHALLENGE_SECONDS);
+    expect(challengeSecondsRemaining(CHALLENGE_WINDOW_START_SECONDS + 30)).toBe(30);
+    expect(challengeSecondsRemaining(CHALLENGE_END_SECONDS)).toBe(0);
+    expect(challengeSecondsRemaining(85)).toBe(0);
     expect(challengeSecondsRemaining(200)).toBe(0);
+    expect(challengeSecondsRemaining(-10)).toBe(CHALLENGE_SECONDS);
   });
 
   it("matches every published timer reading", () => {
@@ -589,23 +595,63 @@ describe("on-screen timer continuity", () => {
 
   it("formats the clock as MM:SS", () => {
     expect(formatTimer(60)).toBe("01:00");
+    expect(formatTimer(11)).toBe("00:11");
     expect(formatTimer(7)).toBe("00:07");
     expect(formatTimer(0)).toBe("00:00");
     expect(formatTimer(-5)).toBe("00:00");
   });
 
-  it("starts the clock inside scene 03 and ends it inside scene 07", () => {
+  it("starts the clock inside scene 03's send-off and expires it inside the chase", () => {
     const gearScene = SCENES.find((scene) => scene.id === "scene-03-gear-and-send-off")!;
     const chaseScene = SCENES.find((scene) => scene.id === "scene-07-chase-and-near-miss")!;
+    const resultScene = SCENES.find((scene) => scene.id === "scene-08-result-and-callback")!;
 
-    // The button press is inside the gear scene, not before or after it.
+    // He is sent in during the gear scene: the button press is inside it.
     expect(CHALLENGE_START_SECONDS).toBeGreaterThan(gearScene.startSeconds);
     expect(CHALLENGE_START_SECONDS).toBeLessThan(sceneEndSeconds(gearScene));
 
-    // The 60-second challenge therefore expires inside the chase scene.
-    expect(CHALLENGE_START_SECONDS + CHALLENGE_SECONDS).toBeGreaterThan(chaseScene.startSeconds);
-    expect(CHALLENGE_START_SECONDS + CHALLENGE_SECONDS).toBeLessThanOrEqual(
-      sceneEndSeconds(chaseScene),
+    // The countdown is already running before the press, deliberately. The show does
+    // not give him a head start — it starts charging him the moment she decides he
+    // is going. Starting on the press would push the expiry into scene 08, with him
+    // already home and safe, which is the continuity error this ordering avoids.
+    expect(CHALLENGE_WINDOW_START_SECONDS).toBeLessThan(CHALLENGE_START_SECONDS);
+    expect(CHALLENGE_WINDOW_START_SECONDS).toBeGreaterThan(0);
+    expect(CHALLENGE_WINDOW_START_SECONDS).toBeLessThan(25);
+
+    // And it must expire ON the cut out of the chase, not after it. A clock still
+    // running on the studio stage in scene 08 would be a visible continuity error,
+    // which is the whole reason the window does not start on the button press.
+    expect(CHALLENGE_END_SECONDS).toBe(sceneEndSeconds(chaseScene));
+    expect(CHALLENGE_END_SECONDS).toBe(resultScene.startSeconds);
+    expect(CHALLENGE_END_SECONDS).toBeLessThanOrEqual(sceneEndSeconds(chaseScene));
+  });
+
+  it("keeps the three timer constants mutually consistent", () => {
+    // The relation the whole countdown rests on. If these ever drift, the clock on
+    // screen stops agreeing with the picture.
+    expect(CHALLENGE_WINDOW_START_SECONDS + CHALLENGE_SECONDS).toBe(CHALLENGE_END_SECONDS);
+
+    // A naive start on the button press would expire eleven seconds into the studio
+    // scene, with the contestant already home — the continuity error avoided here.
+    const naiveExpiry = CHALLENGE_START_SECONDS + CHALLENGE_SECONDS;
+    expect(naiveExpiry).toBeGreaterThan(CHALLENGE_END_SECONDS);
+  });
+
+  it("shows a nearly-expired clock when the host says 'Ten seconds'", () => {
+    // The host's line and the on-screen number have to agree, or the joke lands on
+    // a contradiction. Her "Ten seconds" plays in the last quarter of the chase.
+    const tenSecondLine = hostLines(SCENES).find((line) =>
+      line.text.startsWith("Ten seconds"),
     );
+    expect(tenSecondLine).toBeDefined();
+
+    const scene = SCENES.find((candidate) =>
+      candidate.dialogue.some((line) => line === tenSecondLine),
+    );
+    expect(scene?.id).toBe("scene-07-chase-and-near-miss");
+
+    // At the start of the chase the clock reads 11, and it reaches 0 at 72.
+    expect(formatTimer(challengeSecondsRemaining(61))).toBe("00:11");
+    expect(formatTimer(challengeSecondsRemaining(CHALLENGE_END_SECONDS))).toBe("00:00");
   });
 });

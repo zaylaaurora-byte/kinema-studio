@@ -127,43 +127,33 @@ export const CHALLENGE_SECONDS = 60;
 export const CHALLENGE_START_SECONDS = 23;
 
 /**
- * THE MICRO-CUT. Six seconds between the button press and the clock actually
- * running, which is what allows the timer to read exactly 00:00 at the end of the
- * chase instead of the 11 seconds a naive start would leave.
+ * The on-screen clock. Three constants, one inviolable relation:
  *
- * Justified in-world rather than fudged: the pack's shot list describes scene 04 as
- * "Human notices wildlife, then an ominous tremor" — observation, not challenge.
- * He lands at 25 s and the T. rex reveals at 35 s. The timer therefore starts when
- * he is actually IN danger, and scene 04 plays as documentary, which is exactly how
- * the host narrates it.
+ *     CHALLENGE_WINDOW_START_SECONDS + CHALLENGE_SECONDS === CHALLENGE_END_SECONDS
  *
- * It also fixes a real continuity error that came out of reconciling the two source
- * structures (R5): because the brief's eight scenes are not the storyboard's ten
- * panels, a challenge started on the button press would expire 11 seconds into
- * scene 08 — on the studio stage, with the contestant already home.
+ * A test asserts it, because these three numbers drifting apart from each other is
+ * exactly how a countdown ends up disagreeing with the picture.
  *
- *   clock starts  31 s  (inside scene 05, the moment the T. rex is revealed)
- *   clock expires 91 s  ... so the cut is what makes 60 fit: see CHALLENGE_END.
+ *   clock starts  12 s  — he arrives at 25 s with the clock ALREADY RUNNING.
+ *   clock expires 72 s  — the exact frame the chase ends and the programme cuts
+ *                         back to the studio stage.
+ *
+ * Read as broadcast: the host presses the button at 23 s, the clock is already
+ * ticking when he lands at 25 s showing 00:47, and it hits 00:00 on the cut to the
+ * stage. No time is unaccounted for and none of it is spent on the studio floor.
+ *
+ * WHY NOT START IT ON THE BUTTON PRESS (23 s). That was the obvious choice and it
+ * is wrong here. It would put the expiry at 83 s — eleven seconds into scene 08,
+ * with the contestant already home, safe and being handed a biscuit. Given the
+ * brief's own eight-scene boundaries, the only ways out are to start the clock
+ * before he is sent or to let it expire after he is safe, and the second one is the
+ * continuity error. The first is also thematically right: the show does not give
+ * him a head start, it starts charging him the moment she decides he is going.
  */
-export const CHALLENGE_WINDOW_START_SECONDS = 31;
+export const CHALLENGE_WINDOW_START_SECONDS = 12;
 
-/**
- * The on-screen clock reaches 00:00 at t = 72 s, the exact frame the chase ends and
- * the programme cuts back to the stage. The chase is 14 s long (58-72) and must
- * contain the storyboard's "FINAL TEN SECONDS" beat, so the visible countdown is
- * its final stretch: 11 s at 61, running to 00:00 at 72.
- *
- * Derivation of the 60 seconds the contestant is said to survive:
- *   9 s of it elapses between the button press (23) and the clock appearing (31),
- *   which is the dinosaur's approach — exactly the "ominous tremor" the brief puts
- *   in scene 04. Those 9 seconds are the ones that make the total 60.
- *
- * Read as broadcast, this is consistent and invisible to the audience: the host
- * says "ten seconds" at 70 s with 2 s still showing, and the clock hits zero on the
- * cut. This is the R5 reconciliation, and it is the reason `CHALLENGE_START_SECONDS`
- * and `CHALLENGE_WINDOW_START_SECONDS` are two different numbers rather than one.
- */
-export const CHALLENGE_END_SECONDS = 72;
+/** The on-screen clock reaches 00:00 here: the last frame of the chase. */
+export const CHALLENGE_END_SECONDS = CHALLENGE_WINDOW_START_SECONDS + CHALLENGE_SECONDS;
 
 /**
  * On-screen timer readings, reconciled per R5 and consistent with
@@ -174,6 +164,7 @@ export const CHALLENGE_END_SECONDS = 72;
  * and a test asserts every published reading against that function.
  */
 export const TIMER_READINGS: readonly { readonly atSeconds: number; readonly display: string }[] = [
+  { atSeconds: 25, display: "00:47" },
   { atSeconds: 61, display: "00:11" },
   { atSeconds: 70, display: "00:02" },
 ] as const;
@@ -181,9 +172,9 @@ export const TIMER_READINGS: readonly { readonly atSeconds: number; readonly dis
 /**
  * Seconds shown on the on-screen clock at a given absolute programme time.
  *
- * Before the clock appears it reads full (it has not started); after it expires it
- * reads zero. It is clamped in both directions so a scrubber can read any time
- * without producing a negative display.
+ * Before the clock starts it reads full (it has not begun); after it expires it
+ * reads zero. Clamped in both directions so a scrubber can read any time without
+ * producing a negative or over-long display.
  */
 export function challengeSecondsRemaining(timeSeconds: number): number {
   if (timeSeconds <= CHALLENGE_WINDOW_START_SECONDS) return CHALLENGE_SECONDS;
@@ -723,7 +714,7 @@ export const SCENES: readonly Scene[] = [
     synopsis:
       "A genuine chase: full run cycle, environment motion, dinosaur scale, and one near miss that takes the explorer hat off his head and both of them into a hollow fallen log. Inside it, he is nose to nose with the T. rex and its teeth are directly in front of him. The master shot: the T. rex is asleep when he finds it, and he mistakes that for permission. Everything after that is his own fault and he knows it.",
     camera:
-      "Handheld-feel tracking shot on the run — the camera must move laterally with him along the ground plane, not zoom. Rapid cut for the ride cutaway. Static locked shot inside the hollow log, framing him against the dinosaur's eye through the opening. On-screen countdown timer enters bottom right at 61 s, showing 00:11, and runs to 00:00 on the final frame of the scene. Final whip-pan out of the log as the chase resumes.",
+      "Handheld-feel tracking shot on the run — the camera must move laterally with him along the ground plane, not zoom. Rapid cut for the ride cutaway. Static locked shot inside the hollow log, framing him against the dinosaur's eye through the opening. On-screen countdown timer is present from scene 04 onward and reads 00:11 as the chase opens at 61 s, running to 00:00 on this scene's final frame. Final whip-pan out of the log as the chase resumes.",
     sfx:
       "Heavy footfalls that get louder and closer; the sub-bass from scene 04 returns at double the rate. Wind past the ears on the run. A heavy WHUMP as the ride mounts, a snore that stops dead, and a roar that is now very close. Inside the log, the world goes muffled and close — his breathing is the loudest thing in the mix.",
     dialogue: [

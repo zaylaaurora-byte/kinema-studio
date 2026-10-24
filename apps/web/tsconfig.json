@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Next.js writes its own generated types here on every build.
+    "plugins": [{ "name": "next" }],
+    "jsx": "preserve",
+    "allowJs": true,
+    "incremental": true,
+    "noEmit": true,
+    // Next's own `next-env.d.ts` requires the DOM/ES lib set; the base already
+    // supplies those.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".turbo", "dist"]
+}

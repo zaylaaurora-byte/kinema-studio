@@ -227,27 +227,34 @@ export async function encodeFrames(
         reject(new RenderAbortedError(framesWritten));
         return;
       }
+
+      // The write callback fires when the chunk has been handed to the OS, which is not
+      // the same as "'drain' fired". `settle` guarantees we act on whichever comes first
+      // and never resolve/reject twice.
+      let settled = false;
+      const settle = (fn: () => void): void => {
+        if (settled) return;
+        settled = true;
+        child.stdin.off("drain", onDrain);
+        child.stdin.off("error", onError);
+        fn();
+      };
+
+      const onDrain = (): void => settle(resolve);
+      const onError = (err: Error): void => settle(() => reject(err));
+
       // `write` returning false means "do not write more yet". We honour it by waiting
       // for 'drain'. This is what keeps memory flat across thousands of frames.
       const flushed = child.stdin.write(buf, (err) => {
-        if (err) reject(err);
+        if (err) settle(() => reject(err));
       });
+
       if (flushed) {
-        resolve();
+        // The buffer was accepted; no drain is pending for this chunk.
+        settle(resolve);
         return;
       }
-      const onDrain = (): void => {
-        cleanup();
-        resolve();
-      };
-      const onError = (err: Error): void => {
-        cleanup();
-        reject(err);
-      };
-      const cleanup = (): void => {
-        child.stdin.off("drain", onDrain);
-        child.stdin.off("error", onError);
-      };
+
       child.stdin.once("drain", onDrain);
       child.stdin.once("error", onError);
     });
@@ -261,7 +268,15 @@ export async function encodeFrames(
     }
 
     // Closing stdin sends EOF, which is how FFmpeg knows the image sequence ended.
-    await new Promise<void>((resolve) => child.stdin.end(resolve));
+    //
+    // This must not reject on EPIPE: if FFmpeg already failed (bad codec, unwritable
+    // output) the pipe is gone, and the meaningful error is its exit code and stderr
+    // below — not "write EPIPE". The real failure is reported by the exit check.
+    await new Promise<void>((resolve) => {
+      const done = (): void => resolve();
+      child.stdin.once("error", done);
+      child.stdin.end(done);
+    });
 
     const { code } = await exit;
     if (aborted) throw new RenderAbortedError(framesWritten);

@@ -31,6 +31,7 @@
  */
 
 import type { Channel } from "../scene.js";
+import { HEAD_RADIUS } from "./human-rig.js";
 
 /** Numeric channel with explicit keyframes. */
 function num(...values: readonly number[]): Channel {
@@ -45,13 +46,19 @@ function at(value: number): Channel {
   return num(value);
 }
 
-/** The rest position of each face part inside head-local space. */
+/**
+ * The rest position of each face part inside head-local space.
+ *
+ * DERIVED from the rig's own head radius rather than hard-coded, so the face cannot
+ * silently drift out of the head if the head is ever resized. These mirror the offsets
+ * in `buildHumanRig` and are asserted against it by `human-rig.test.ts`.
+ */
 export const FACE_REST = {
-  eyeLeft: { x: 1.75, y: 0.6 },
-  eyeRight: { x: -1.75, y: 0.6 },
-  browLeft: { x: 1.75, y: 2.35 },
-  browRight: { x: -1.75, y: 2.35 },
-  mouth: { x: 0, y: -1.5 },
+  eyeLeft: { x: HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.12 },
+  eyeRight: { x: -HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.12 },
+  browLeft: { x: HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.5 },
+  browRight: { x: -HEAD_RADIUS * 0.34, y: HEAD_RADIUS * 0.5 },
+  mouth: { x: 0, y: -HEAD_RADIUS * 0.4 },
 } as const;
 
 /**
@@ -70,11 +77,27 @@ export interface Expression {
 }
 
 /**
- * Build one part's channel override.
+ * Build one expression's channel set from normalised face controls.
+ *
+ * Every numeric argument is a RATIO of the head radius rather than an absolute
+ * distance, so an expression means the same thing on any head size. The pilot may well
+ * want a bigger-headed "chibi" variant later; because these are ratios, that variant
+ * gets all ten expressions for free instead of needing them re-tuned.
  *
  * Only the properties an expression actually changes are emitted. Anything omitted keeps
  * its rest value from the rig, so an expression never has to restate position channels
  * it does not touch.
+ *
+ * @param eyeScaleX   horizontal squash of the eye oval
+ * @param eyeScaleY   vertical squash of the eye oval (0.4 = heavy lids)
+ * @param browRotationDeg angle of the brow bar; sign flips per side so both brows
+ *                        express the same emotion
+ * @param browDeltaY  how far the brow lifts or drops, in head radii
+ * @param eyeDeltaY   how far the whole eye moves, in head radii
+ * @param mouthScaleX horizontal stretch of the mouth
+ * @param mouthScaleY vertical stretch of the mouth (large = open wail)
+ * @param mouthDeltaY vertical mouth offset, in head radii
+ * @param mouthRotationDeg tilt of the mouth, for a frown or a smirk
  */
 function face(
   eyeScaleX: number,
@@ -89,13 +112,18 @@ function face(
 ): ExpressionChannels {
   const brow = (side: "left" | "right", mirror: number): Readonly<Record<string, Channel>> => ({
     rotation: at((browRotationDeg * mirror * Math.PI) / 180),
-    y: at((side === "left" ? FACE_REST.browLeft.y : FACE_REST.browRight.y) + browDeltaY),
+    y: at(
+      (side === "left" ? FACE_REST.browLeft.y : FACE_REST.browRight.y) +
+        browDeltaY * HEAD_RADIUS,
+    ),
   });
 
   const eye = (side: "left" | "right"): Readonly<Record<string, Channel>> => ({
     scaleX: at(eyeScaleX),
     scaleY: at(eyeScaleY),
-    y: at((side === "left" ? FACE_REST.eyeLeft.y : FACE_REST.eyeRight.y) + eyeDeltaY),
+    y: at(
+      (side === "left" ? FACE_REST.eyeLeft.y : FACE_REST.eyeRight.y) + eyeDeltaY * HEAD_RADIUS,
+    ),
   });
 
   return {
@@ -108,7 +136,7 @@ function face(
     mouth: {
       scaleX: at(mouthScaleX),
       scaleY: at(mouthScaleY),
-      y: at(FACE_REST.mouth.y + mouthDeltaY),
+      y: at(FACE_REST.mouth.y + mouthDeltaY * HEAD_RADIUS),
       rotation: at((mouthRotationDeg * Math.PI) / 180),
     },
   };

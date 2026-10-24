@@ -1,0 +1,259 @@
+/*
+ * Kinema Studio - Tailwind v4 style entry.
+ *
+ * Tailwind v4 is CSS-first: there is no `tailwind.config.js` anywhere in this app
+ * and there must not be one. Every design token from `@kinema/config` is declared
+ * here inside `@theme`, which is what generates the utility classes (`bg-panel`,
+ * `text-text-secondary`, `rounded-md`, ...).
+ *
+ * SOURCE OF TRUTH: `packages/config/src/tokens.ts`. The values below are copied
+ * from it verbatim. There is a unit test (`src/lib/tokens.test.ts`) that fails if
+ * these drift, so this is a checked mirror rather than a hopeful copy.
+ *
+ * Accessibility rules that are easy to break and are therefore restated here:
+ *   1. `color.accent` is LIGHT (#E6F55A). Any text on it must use `--color-accent-contrast`.
+ *   2. `color.focus` is the only focus-ring colour. Every interactive element gets one.
+ *   3. Minimum interactive target is 24px (WCAG 2.2), preferred 32px.
+ */
+
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------------- */
+/* Theme: every value traces back to packages/config/src/tokens.ts           */
+/* ------------------------------------------------------------------------- */
+
+@theme {
+  /* --- Colour ------------------------------------------------------------ */
+  --color-canvas: #0b0d0e;
+  --color-canvas-raised: #101315;
+
+  --color-panel: #171a1d;
+  --color-panel-elevated: #202428;
+
+  --color-border: #252a2e;
+  --color-border-strong: #333a3f;
+
+  --color-text: #f4f5f2;
+  --color-text-secondary: #a0a8a6;
+  --color-text-tertiary: #86908d;
+
+  --color-accent: #e6f55a;
+  --color-accent-contrast: #0b0d0e;
+  --color-accent-subtle: #2a2f16;
+
+  --color-mint: #94ddbd;
+  --color-mint-contrast: #06231a;
+
+  --color-danger: #f17e78;
+  --color-warning: #f4c66a;
+  --color-success: #94ddbd;
+  --color-info: #8fb8e8;
+
+  --color-focus: #e6f55a;
+
+  /* --- Spacing (4px base) ------------------------------------------------ */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
+
+  /* --- Radius ------------------------------------------------------------ */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* --- Typography -------------------------------------------------------- */
+  --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-display: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 11px;
+  --text-xs--line-height: 1.5;
+  --text-sm: 12px;
+  --text-sm--line-height: 1.5;
+  --text-base: 13px;
+  --text-base--line-height: 1.6;
+  --text-md: 14px;
+  --text-md--line-height: 1.6;
+  --text-lg: 16px;
+  --text-lg--line-height: 1.5;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.3;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 1.15;
+  --text-3xl: 34px;
+  --text-3xl--line-height: 1.15;
+  --text-display: 52px;
+  --text-display--line-height: 1.15;
+  --text-display-lg: 72px;
+  --text-display-lg--line-height: 1.15;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --tracking-display: -0.03em;
+  --tracking-heading: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-label: 0.06em;
+
+  /* --- Elevation --------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.7);
+
+  /* --- Motion ------------------------------------------------------------ */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-drag: cubic-bezier(0.2, 0, 0, 1);
+
+  /* --- Layout ------------------------------------------------------------ */
+  --spacing-topbar: 52px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1440px;
+  --breakpoint-3xl: 1920px;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Base                                                                      */
+/* ------------------------------------------------------------------------- */
+
+@layer base {
+  * {
+    /* Tailwind v4 no longer applies this by default; without it the hairline
+       borders and the focus rings are inconsistent across engines. */
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+    /* The shell owns its own scrolling regions; the document must never scroll,
+       otherwise pane resizing produces a page-level scrollbar. */
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    height: 100%;
+    margin: 0;
+    background-color: var(--color-canvas);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible focus everywhere, using the token colour. `:focus-visible` keeps it
+     off mouse clicks while guaranteeing it for keyboard navigation (WCAG 2.4.7). */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* CJK/Latin numerals in the timeline and timecode readouts must not jitter as
+     digits change width. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-contrast);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-strong);
+    border-radius: var(--radius-full);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-text-tertiary);
+    background-clip: content-box;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Utilities                                                                 */
+/* ------------------------------------------------------------------------- */
+
+@utility surface-grid {
+  /* The empty viewer's backdrop. A very low-contrast grid that reads as "a
+     canvas with nothing on it yet" rather than as decoration. */
+  background-image:
+    linear-gradient(to right, rgba(37, 42, 46, 0.55) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(37, 42, 46, 0.55) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@utility resize-handle {
+  /* Resize dividers are visually thin but must stay clickable. The hit area is
+     widened with a pseudo-element while the visible line stays 1px, so the
+     divider never steals space from the content it separates. */
+  position: relative;
+  flex: none;
+  background-color: var(--color-border);
+  transition: background-color 140ms var(--ease-standard);
+}
+
+@utility resize-handle-hit {
+  position: absolute;
+  inset: 0;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Reduced motion                                                            */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * The token module states: "The reduced-motion preference must be honoured. Any
+ * transition that is purely decorative must collapse to zero duration."
+ *
+ * `useReducedMotion` handles the JS side (motion's animations). This block is the
+ * CSS side and is what makes the rule unconditional rather than best-effort.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

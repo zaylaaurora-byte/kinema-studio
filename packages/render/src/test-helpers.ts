@@ -295,7 +295,7 @@ export interface ProbeResult {
  * frame count for a file we just wrote, and the report notes where the two differ.
  */
 export async function ffprobe(filePath: string, countFrames = false): Promise<ProbeResult> {
-  const ffprobePath = requireFfprobePath();
+  const ffprobePath = findFfprobeForTests();
   const args = [
     "-v", "error",
     "-show_format",

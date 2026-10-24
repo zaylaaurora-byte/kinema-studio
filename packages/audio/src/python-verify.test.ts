@@ -192,63 +192,6 @@ maybe("WAV output verified by Python", () => {
     expect(result.absError).toBe(0);
   });
 
-  it("writes a 32-bit float file that ffmpeg decodes as float32 with the expected values", () => {
-    //
-    // Python's stdlib `wave` module CANNOT read IEEE-float WAV files. By design it
-    // accepts only `WAVE_FORMAT_PCM` (tag 1) or `WAVE_FORMAT_EXTENSIBLE` whose
-    // SubFormat GUID is the PCM subtype; anything else raises
-    // `wave.Error: unknown format: 3`. That restriction is upstream in wave.py, not
-    // something our encoder can satisfy — a float file read by `wave` would have to lie
-    // about its format tag, which is precisely the kind of quiet wrongness this module
-    // refuses to do.
-    //
-    // So float WAV is verified against ffmpeg instead, which reads format tag 3 natively
-    // and is an entirely independent decoder. The 16-bit PCM paths, which `wave` does
-    // support, are verified against Python above.
-    const dir = ensureDir();
-    const path = join(dir, "mono-32f.wav");
-
-    const frames = 512;
-    const samples = new Float64Array(frames);
-    for (let i = 0; i < frames; i++) {
-      samples[i] = 0.5 * Math.sin((2 * Math.PI * 440 * i) / 48000);
-    }
-    writeFileSync(path, encodeWav(samples, { sampleRate: 48000, channels: 1, bitDepth: 32 }));
-
-    // `ffprobe -show_streams` reports what ffmpeg actually made of the container.
-    const probe = execFileSync(
-      FFPROBE,
-      [
-        "-v", "error",
-        "-select_streams", "a:0",
-        "-show_entries", "stream=codec_name,sample_fmt,sample_rate,channels,bits_per_sample,duration",
-        "-of", "json",
-        path,
-      ],
-      { encoding: "utf8", shell: false },
-    );
-    const stream = (JSON.parse(probe) as { streams: Record<string, unknown>[] }).streams[0]!;
-
-    // ffmpeg must agree with every header field we wrote.
-    expect(stream["codec_name"]).toBe("pcm_f32le");
-    expect(stream["sample_fmt"]).toBe("flt");
-    expect(stream["sample_rate"]).toBe("48000");
-    expect(stream["channels"]).toBe(1);
-    expect(stream["bits_per_sample"]).toBe(32);
-
-    // And decode the samples themselves to f64, then compare to the intended values.
-    const raw = execFileSync(
-      FFMpeg,
-      ["-v", "error", "-i", path, "-f", "f64le", "-acodec", "pcm_f64le", "-"],
-      { shell: false, maxBuffer: 64 * 1024 * 1024 },
-    );
-    const decoded = new Float64Array(raw.buffer, raw.byteOffset, raw.length / 8);
-    expect(decoded.length).toBe(frames);
-    for (const index of [0, 100, 255, 511]) {
-      expect(decoded[index]!).toBeCloseTo(samples[index]!, 6);
-    }
-  });
-
   it("produces a file whose declared sizes match its actual length, as seen from outside", () => {
     // Python recomputes the file length from the header's own arithmetic. If the RIFF
     // size or data size were wrong, these two numbers would disagree.
@@ -328,5 +271,114 @@ print(json.dumps({
     expect(result.rawSamples).toBe(frames);
     expect(result.identical).toBe(true);
     expect(result.declaredDataBytes).toBe(frames * 2);
+  });
+});
+
+/**
+ * Float WAV, verified by ffmpeg.
+ *
+ * WHY NOT PYTHON HERE — a genuine and important limitation, not a workaround for our own
+ * bug. Python's stdlib `wave` module CANNOT read IEEE-float WAV files. By design it
+ * accepts only `WAVE_FORMAT_PCM` (tag 1) or `WAVE_FORMAT_EXTENSIBLE` whose SubFormat GUID
+ * is the PCM subtype; anything else raises `wave.Error: unknown format: 3`. That
+ * restriction lives in wave.py upstream. The only way to make `wave` accept a float file
+ * would be to write a false format tag, which is exactly the quiet wrongness this module
+ * refuses to do — so the file stays correct and the verification uses a decoder that
+ * genuinely supports the format.
+ *
+ * ffmpeg reads format tag 3 natively and shares no code with us, so it is a real
+ * independent check. It also independently sanity-checks the header arithmetic: ffprobe
+ * derives the frame count from our `data` chunk size, so a wrong size shows up as a wrong
+ * duration rather than as a passing test.
+ */
+maybeFfmpeg("32-bit float WAV verified by ffmpeg", () => {
+  it("is probed by ffprobe as pcm_f32le with the header fields we wrote", () => {
+    const dir = ensureDir();
+    const path = join(dir, "mono-32f.wav");
+
+    const frames = 512;
+    const samples = new Float64Array(frames);
+    for (let i = 0; i < frames; i++) {
+      samples[i] = 0.5 * Math.sin((2 * Math.PI * 440 * i) / 48000);
+    }
+    writeFileSync(path, encodeWav(samples, { sampleRate: 48000, channels: 1, bitDepth: 32 }));
+
+    const probe = execFileSync(
+      FFPROBE,
+      [
+        "-v", "error",
+        "-select_streams", "a:0",
+        "-show_entries", "stream=codec_name,sample_fmt,sample_rate,channels,bits_per_sample,duration",
+        "-of", "json",
+        path,
+      ],
+      { encoding: "utf8", shell: false },
+    );
+    const stream = (JSON.parse(probe) as { streams: Record<string, unknown>[] }).streams[0]!;
+
+    // ffmpeg must agree with every header field we wrote.
+    expect(stream["codec_name"]).toBe("pcm_f32le");
+    expect(stream["sample_fmt"]).toBe("flt");
+    expect(stream["sample_rate"]).toBe("48000");
+    expect(stream["channels"]).toBe(1);
+    expect(stream["bits_per_sample"]).toBe(32);
+    // Duration is derived by ffmpeg from our data-chunk size, so this checks the sizes.
+    expect(Number(stream["duration"])).toBeCloseTo(frames / 48000, 4);
+  });
+
+  it("decodes to sample values matching the encoder's intent", () => {
+    const dir = ensureDir();
+    const path = join(dir, "mono-32f-values.wav");
+
+    const frames = 512;
+    const samples = new Float64Array(frames);
+    for (let i = 0; i < frames; i++) {
+      samples[i] = 0.5 * Math.sin((2 * Math.PI * 440 * i) / 48000);
+    }
+    writeFileSync(path, encodeWav(samples, { sampleRate: 48000, channels: 1, bitDepth: 32 }));
+
+    const raw = execFileSync(
+      FFMpeg,
+      ["-v", "error", "-i", path, "-f", "f64le", "-acodec", "pcm_f64le", "-"],
+      { shell: false, maxBuffer: 64 * 1024 * 1024 },
+    );
+    const decoded = new Float64Array(raw.buffer, raw.byteOffset, raw.length / 8);
+
+    expect(decoded.length).toBe(frames);
+    // Sampled across the file, so a wrong data-chunk offset would misalign these.
+    for (const index of [0, 100, 255, 511]) {
+      expect(decoded[index]!).toBeCloseTo(samples[index]!, 6);
+    }
+  });
+
+  it("also round-trips 16-bit stereo through ffmpeg, cross-checking the PCM path", () => {
+    // Independent confirmation of the same 16-bit path Python verified, from a second
+    // decoder. Two unrelated readers agreeing is much stronger than one.
+    const dir = ensureDir();
+    const path = join(dir, "stereo-16-ffmpeg.wav");
+
+    const frames = 400;
+    const samples = new Float64Array(frames * 2);
+    for (let f = 0; f < frames; f++) {
+      samples[f * 2] = 0.5 * Math.sin((2 * Math.PI * 300 * f) / 16000);
+      samples[f * 2 + 1] = 0.5 * Math.sin((2 * Math.PI * 700 * f) / 16000);
+    }
+    writeFileSync(path, encodeWav(samples, { sampleRate: 16000, channels: 2, bitDepth: 16 }));
+
+    const raw = execFileSync(
+      FFMpeg,
+      ["-v", "error", "-i", path, "-f", "f64le", "-acodec", "pcm_f64le", "-"],
+      { shell: false, maxBuffer: 64 * 1024 * 1024 },
+    );
+    const decoded = new Float64Array(raw.buffer, raw.byteOffset, raw.length / 8);
+
+    expect(decoded.length).toBe(frames * 2);
+    // 16-bit quantisation: 1/32767 ≈ 3.05e-5, so a tolerance of 1e-4 is tight.
+    for (const frame of [0, 50, 200, 399]) {
+      expect(decoded[frame * 2]!).toBeCloseTo(samples[frame * 2]!, 4);
+      expect(decoded[frame * 2 + 1]!).toBeCloseTo(samples[frame * 2 + 1]!, 4);
+    }
+    // The channels must not have been swapped or summed.
+    expect(Math.abs(decoded[100 * 2]! - decoded[100 * 2 + 1]!)).toBeGreaterThan(0.05);
   });
 });

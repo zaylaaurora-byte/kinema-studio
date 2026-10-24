@@ -17,32 +17,32 @@
  * ---------------------------------------------------------------------------
  * PROPORTIONS: WHY THE NUMBERS ARE WHAT THEY ARE
  * ---------------------------------------------------------------------------
- * The sheet annotates the character as "3.5 - 4 HEADS (APPROX)". That is the classical
- * artistic proportion: the figure's total height divided by the height of the head
- * measured chin-to-crown.
+ * The sheet annotates the character as "3.5 - 4 HEADS (APPROX)" and draws the head as a
+ * PERFECTLY ROUND circle with no hair, ears or nose. Those two facts together fix the
+ * geometry, because they mean the head circle's DIAMETER is the head unit:
  *
- * Both senses of "head" are easy to confuse, so this file uses one canonical unit and
- * states it explicitly:
+ *     head unit  = HEAD_DIAMETER = 22   (the drawn circle's diameter)
+ *     figure     = 84                   (ground to crown)
+ *     head count = 84 / 22 = 3.8182     -> inside the required 3.5 - 4.0 band
  *
- *   - `HEAD_DIAMETER` (= 22) is ONE HEAD, the classical unit, chin to crown.
- *     HEAD_RADIUS is HEAD_DIAMETER / 4 = 5.5, i.e. HALF a classical head high.
- *   - the head OUTLINE drawn on screen is an ELLIPSE 11 wide by 5.5 tall (a 2:1 lens
- *     shape — see `HEAD_OUTLINE_HEIGHT`).
- *
- * So: one head unit = 22, and the drawn head circle = 5.5. The head-count test measures
- * total height / 22 and gets 3.8182, inside the required 3.5–4.0 band.
+ * An earlier draft of this file treated the head unit as twice the drawn radius, which
+ * forced the head to be drawn as a tall ellipse to make the arithmetic work. That made
+ * the character look like an egg-headed alien and directly contradicted the sheet, which
+ * is emphatic that the head is round. The unit above is the reading that satisfies both
+ * constraints at once, and the rendered result is a round head.
  *
  * The layout is built BOTTOM-UP from the ground so the arithmetic is easy to audit:
  *
  *     ground      y =  0.0   feet
+ *     ankle       y =  0.0   (foot rests on the ground)
+ *     knee        y = 18.0
  *     hips        y = 36.0   <- rig root
  *     shoulder    y = 58.0   (hips + TORSO_HEIGHT 22)
  *     headBottom  y = 62.0   (shoulder + NECK_LENGTH 4)
  *     crown       y = 84.0   (headBottom + HEAD_DIAMETER 22) == FIGURE_HEIGHT
  *
- * The character faces the viewer; +x is the character's OWN left in screen space is
- * avoided deliberately — parts are named "left"/"right" from the VIEWER's perspective
- * and mirrored by sign so mirroring a pose is a pure negation.
+ * The character faces the viewer. Parts are named "left"/"right" from the VIEWER's
+ * perspective and mirrored by sign, so mirroring a pose is a pure negation.
  */
 
 import type { Channel, Rig, RigPart, RigStyle, Shape, Vec2 } from "../scene.js";
@@ -55,30 +55,15 @@ import type { Channel, Rig, RigPart, RigStyle, Shape, Vec2 } from "../scene.js";
 export const FIGURE_HEIGHT = 84;
 
 /**
- * ONE HEAD in the classical artistic sense: chin to crown.
+ * The head unit: the DIAMETER of the drawn head circle, and therefore the unit that
+ * "3.5 - 4 heads" is measured in.
  *
- * This is the unit `HEAD_COUNT` is measured in. The drawn head is an ellipse of
- * `HEAD_RADIUS` = HEAD_DIAMETER / 4, so the visible circle is half a "head" tall —
- * which is exactly what makes a 3.82-head character read as a stylised cartoon rather
- * than a realistic 7.5-head human.
+ * `FIGURE_HEIGHT / HEAD_DIAMETER` = 84 / 22 = 3.8182 heads.
  */
 export const HEAD_DIAMETER = 22;
 
-/** Radius of the drawn head outline (half of one classical head's height). */
-export const HEAD_RADIUS = HEAD_DIAMETER / 4;
-
-/**
- * Height of the drawn head ellipse.
- *
- * The sheet's head is a circle, but a true circle of radius 5.5 would be far too small
- * next to a 22-unit torso. Drawing it as an ellipse 11 x 5.5 in one axis and scaling Y
- * keeps the classic cartoon "big round head" silhouette while preserving the classical
- * head-count arithmetic. See `HEAD_OUTLINE_SCALE_Y`.
- */
-export const HEAD_OUTLINE_HEIGHT = HEAD_RADIUS;
-
-/** Vertical stretch applied to the head outline so it reads as a round cartoon head. */
-export const HEAD_OUTLINE_SCALE_Y = 2;
+/** Radius of the drawn head circle. */
+export const HEAD_RADIUS = HEAD_DIAMETER / 2;
 
 /** Hip joint height above the ground. Legs are `HIP_HEIGHT` tall. */
 export const HIP_HEIGHT = 36;
@@ -96,21 +81,31 @@ export const SHOULDER_HEIGHT = HIP_HEIGHT + TORSO_HEIGHT;
 export const HEAD_BOTTOM = SHOULDER_HEIGHT + NECK_LENGTH;
 
 /** Half the distance between the two hip joints. */
-export const HIP_HALF_WIDTH = 3.5;
+export const HIP_HALF_WIDTH = 4.2;
 
 /** Half the distance between the two shoulder joints. */
 export const SHOULDER_HALF_WIDTH = 7.5;
+
+/** Radius of the soft tube torso. Wide enough to meet the shoulders. */
+export const TORSO_HALF_WIDTH = 7.5;
 
 export const UPPER_LEG_LENGTH = 18;
 export const LOWER_LEG_LENGTH = 18;
 /** Horizontal length of the foot, pointing forward (+x in part-local space). */
 export const FOOT_LENGTH = 7;
 
+/** Length of the upper arm, shoulder joint to elbow. */
 export const UPPER_ARM_LENGTH = 16;
+/** Length of the forearm, elbow to wrist. */
 export const LOWER_ARM_LENGTH = 15;
 
-/** Tube thickness of the limbs. Uniform, so the silhouette stays even. */
-export const LIMB_RADIUS = 2.6;
+/**
+ * Tube thickness of the limbs.
+ *
+ * Deliberately chunky: the sheet's limbs are fat noodles, not anatomical arms. A thin
+ * limb next to a thick outline reads as a stick figure, which is the wrong character.
+ */
+export const LIMB_RADIUS = 3.0;
 
 /** Stroke width for the characteristic THICK black outline. */
 export const OUTLINE_WIDTH = 2.2;
@@ -268,45 +263,63 @@ export function buildHumanRig(id = "silent-human"): Rig {
     // above the hips plus half its own length: the rect is drawn centred on origin.
     localPosition: { x: 0, y: TORSO_HEIGHT / 2 },
     zIndex: 10,
-    shapes: [{ kind: "rect", width: SHOULDER_HALF_WIDTH * 2 + 1, height: TORSO_HEIGHT, rx: 6 }],
+    // A soft capsule torso rather than a hard box: the sheet's body is a rounded tube
+    // that tapers into the hips, with no modelled chest or waist.
+    shapes: [
+      {
+        kind: "capsule",
+        from: { x: 0, y: -TORSO_HEIGHT / 2 },
+        to: { x: 0, y: TORSO_HEIGHT / 2 },
+        radius: TORSO_HALF_WIDTH,
+      },
+    ],
   });
 
   add({
     id: "neck",
     parentId: "hips",
-    // Neck spans the gap from the shoulder line to the head bottom.
+    // Neck spans the gap from the shoulder line to the head bottom, and is drawn a
+    // little long so it tucks under the head circle rather than floating short of it.
     localPosition: { x: 0, y: TORSO_HEIGHT + NECK_LENGTH / 2 },
     zIndex: 9,
-    shapes: [{ kind: "rect", width: 4.5, height: NECK_LENGTH + 2, rx: 2 }],
+    shapes: [
+      {
+        kind: "capsule",
+        from: { x: 0, y: -NECK_LENGTH },
+        to: { x: 0, y: NECK_LENGTH },
+        radius: 3.2,
+      },
+    ],
   });
 
   // -------------------------------------------------------------------------
-  // Head. Round, no hair, no ears, no nose.
+  // Head. Round, no hair, no ears, no nose — a true circle.
   // -------------------------------------------------------------------------
 
   add({
     id: "head",
     parentId: "hips",
-    // Origin at the CENTRE of the head ellipse, which is the natural pivot for a nod
-    // or a head shake.
+    // Origin at the CENTRE of the head circle, which is the natural pivot for a nod
+    // or a head shake. Head bottom sits at TORSO_HEIGHT + NECK_LENGTH, so the centre
+    // is one radius above that.
     localPosition: { x: 0, y: TORSO_HEIGHT + NECK_LENGTH + HEAD_RADIUS },
     zIndex: 20,
-    shapes: [
-      {
-        kind: "ellipse",
-        rx: HEAD_RADIUS,
-        ry: HEAD_RADIUS * HEAD_OUTLINE_SCALE_Y,
-      },
-    ],
+    shapes: [{ kind: "circle", radius: HEAD_RADIUS }],
   });
 
   // --- Face -----------------------------------------------------------------
   // Head-local space: origin is the head centre, +y is up.
-  // The head is 5.5 units in radius, so these offsets are deliberately small and
-  // are the whole reason face parts get their own thinner style.
+  // The head radius is 11, so these offsets are expressed as fractions of it and stay
+  // correct if the head is ever resized.
 
-  const EYE_Y = 0.6;
-  const EYE_DX = 1.75;
+  const EYE_Y = HEAD_RADIUS * 0.12;
+  const EYE_DX = HEAD_RADIUS * 0.34;
+  const EYE_RX = HEAD_RADIUS * 0.15;
+  const EYE_RY = HEAD_RADIUS * 0.26;
+  const BROW_Y = HEAD_RADIUS * 0.5;
+  const BROW_W = HEAD_RADIUS * 0.46;
+  const BROW_H = HEAD_RADIUS * 0.12;
+  const MOUTH_Y = -HEAD_RADIUS * 0.4;
 
   for (const side of ["left", "right"] as const) {
     const sign = side === "left" ? 1 : -1;
@@ -316,27 +329,27 @@ export function buildHumanRig(id = "silent-human"): Rig {
       parentId: "head",
       localPosition: { x: sign * EYE_DX, y: EYE_Y },
       zIndex: 22,
-      // Tall oval eye, the sheet's default.
-      shapes: [{ kind: "ellipse", rx: 0.72, ry: 1.25 }],
+      // Tall oval eye, the sheet's default. Collapsed to a dot, it is a surprise take.
+      shapes: [{ kind: "ellipse", rx: EYE_RX, ry: EYE_RY }],
     });
 
     add({
       id: `brow-${side}`,
       parentId: "head",
-      localPosition: { x: sign * EYE_DX, y: EYE_Y + 1.75 },
+      localPosition: { x: sign * EYE_DX, y: BROW_Y },
       zIndex: 23,
       // Thick angled bar. Rotation is what makes a brow angry or worried.
-      shapes: [{ kind: "rect", width: 2.1, height: 0.62, rx: 0.3 }],
+      shapes: [{ kind: "rect", width: BROW_W, height: BROW_H, rx: BROW_H / 2 }],
     });
   }
 
   add({
     id: "mouth",
     parentId: "head",
-    localPosition: { x: 0, y: -1.5 },
+    localPosition: { x: 0, y: MOUTH_Y },
     zIndex: 21,
     // A modest closed-mouth lens that scales into a grin, an "O" or a wail.
-    shapes: [{ kind: "ellipse", rx: 1.1, ry: 0.5 }],
+    shapes: [{ kind: "ellipse", rx: HEAD_RADIUS * 0.24, ry: HEAD_RADIUS * 0.11 }],
   });
 
   // -------------------------------------------------------------------------

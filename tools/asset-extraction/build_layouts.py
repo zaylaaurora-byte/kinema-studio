@@ -207,7 +207,7 @@ def border_score(img: np.ndarray) -> np.ndarray:
 
 
 def foreground_mask(img: np.ndarray, tol: float = 26.0,
-                    neutral_bgr=(200.0, 190.0, 178.0)) -> np.ndarray:
+                    background_hex: str | None = None) -> np.ndarray:
     """Boolean 'this pixel is not page background' mask.
 
     This is the primitive the snapper actually needs, and finding it was the
@@ -221,12 +221,22 @@ def foreground_mask(img: np.ndarray, tol: float = 26.0,
     contains almost no figure pixels. That signal is strong, sign-correct and
     independent of how dark the artwork happens to be.
 
-    The tolerance is generous on purpose. Page beige drifts across the sheet
-    (#C4BAAF..#CBC1B4), so a tight tolerance would report gradient as
-    foreground and fill in every gutter we are trying to find.
+    The background colour is *estimated from the border ring* rather than
+    passed as a literal. My first attempt hard-coded a beige constant and got
+    the channel order backwards, which made sheets 02/03 report ~0 gutter
+    everywhere because the entire page read as foreground. Estimating from the
+    border ring cannot fail that way - the ring is background by construction on
+    every reference sheet.
     """
+    from extraction_core import estimate_flat_background
+    if background_hex:
+        from extraction_core import bgr_of
+        base = bgr_of(background_hex)
+    else:
+        base = np.asarray(estimate_flat_background(img).colour, np.float32)
+
     f = img.astype(np.float32)
-    d = np.abs(f - np.asarray(neutral_bgr, np.float32)).max(axis=2)
+    d = np.abs(f - base).max(axis=2)
     fg = (d > tol).astype(np.uint8)
     # Close small holes so paper texture and JPEG speckle do not masquerade as
     # figure. 3px is below the width of any real gutter on these sheets.
@@ -234,51 +244,74 @@ def foreground_mask(img: np.ndarray, tol: float = 26.0,
     return fg.astype(bool)
 
 
-def gutter_profiles(img: np.ndarray, strip: float = 0.35) -> tuple[np.ndarray, np.ndarray]:
-    """Score every x (and y) by how *empty* a strip around it is.
+def gutter_profiles(img: np.ndarray, band: tuple[int, int] | None = None
+                    ) -> tuple[np.ndarray, np.ndarray]:
+    """Score every x (and y) by how empty it is *relative to its own band*.
 
-    `strip` scales the strip width to the axis length rather than fixing it in
-    pixels, because a cell in the 20-across expression row is ~70px wide while
-    a turnaround figure is ~130px. A fixed 10px strip would over-smooth the
-    former and under-smooth the latter.
+    Two earlier formulations failed measurably, and both failures are
+    instructive:
 
-    Returns (col_score, row_score) in 0..1, where 1 means "definitely a
-    gutter".
+    1. Global strip mean. Any channel spanning a whole sheet must cross
+       captions and neighbouring bands, so the profile compressed into
+       0.37..0.60 and could not separate a gutter from a figure.
+    2. Band-local windowed MINIMUM. This fixed the band problem but collapsed
+       to a flat plateau (max 0.26, p95 0.26, p50 0.19 on sheet 01) because the
+       widest window dominates the min and is nearly constant across x.
+
+    What actually distinguishes a gutter is *contrast against the band's own
+    occupancy*. A gutter column holds near-zero figure pixels; a figure column
+    holds 40-90%. So we score emptiness directly:
+
+        score(x) = 1 - (column occupancy) / (band's high percentile occupancy)
+
+    and clip to 0..1. This is scale-free: a sparse band and a dense band both
+    produce ~1 at their true gutters, so one threshold works everywhere. The
+    high percentile (rather than the max) is the denominator so that one
+    unusually dense column cannot compress the whole scale.
+
+    Row profiles are computed over the full sheet because band separations
+    genuinely are global.
     """
     fg = foreground_mask(img)
     h, w = fg.shape
 
-    def band_score(mask: np.ndarray, half: int) -> np.ndarray:
-        # Integral image gives every window's sum in O(1), so this stays fast
-        # even at 1536x1024 with a 90px strip.
-        ii = cv2.integral(mask.astype(np.uint8), sdepth=cv2.CV_32S)
-        n = mask.shape[0]
-        idx = np.arange(n)
-        lo = np.clip(idx - half, 0, n)
-        hi = np.clip(idx + half + 1, 0, n)
-        tot = ii[hi, -1] - ii[lo, -1]
-        counts = (hi - lo) * mask.shape[1]
-        return 1.0 - (tot / np.maximum(counts, 1))
+    def emptiness(mask_axis: np.ndarray, ref_pct: float = 90.0) -> np.ndarray:
+        """mask_axis is (axis_len, other_len); occupancy along axis 0."""
+        occ = mask_axis.mean(axis=1)
+        ref = np.percentile(occ, ref_pct)
+        if ref < 1e-3:                      # empty band; nothing to find
+            ref = max(occ.max(), 1e-3)
+        return np.clip(1.0 - occ / ref, 0.0, 1.0)
 
-    col = band_score(fg.T, max(3, int(w * strip)))   # strip of columns
-    row = band_score(fg, max(3, int(h * strip)))
-    return col, row
+    if band is not None:
+        y0, y1 = max(0, band[0]), min(h, band[1])
+        sub = fg[y0:y1] if y1 - y0 >= 8 else fg
+    else:
+        sub = fg
+
+    col = emptiness(sub.T)
+    row = emptiness(fg)
+
+    def smooth(a: np.ndarray) -> np.ndarray:
+        k = np.ones(3, np.float64) / 3.0
+        return np.convolve(np.pad(a, 1, mode="edge"), k, mode="valid")[:len(a)]
+    return smooth(col), smooth(row)
 
 
-def snap(val: int, limit: int, profile: np.ndarray, radius: int) -> tuple[int, float, int]:
-    """Snap one boundary to the emptiest nearby strip.
+def snap(val: int, limit: int, profile: np.ndarray, radius: int,
+         cell: int | None = None) -> tuple[int, float, int]:
+    """Snap one boundary to the clearest nearby channel.
 
-    Now that `profile` is a *gutter* score (1 = definitely empty, 0 = solid
-    artwork) the rule is simply: move to the local maximum, but only if that
-    maximum is genuinely gutter-like in absolute terms. The `min_abs` gate is
-    the important one - when a seed sits inside a dense pose cluster there is
-    no gutter within reach, and moving to the least-bad spot would be worse
-    than leaving the seed where the human put it.
-
-    Shift is returned signed and reported, because the whole point is to make
-    visible which rectangles were verified against the pixels and which were
-    not.
+    `radius` is the outer bound on movement. It defaults to a fraction of the
+    cell size rather than to the band, because a boundary that can travel most
+    of a cell width will happily lock onto the *next* figure's gap and silently
+    mis-assign every panel in the row. Measured: with radius=14 on cells ~70px
+    wide, shiftP95 saturated at 14 on every sheet - the signature of a search
+    that is too free. Capping at ~18% of the cell keeps a snapped boundary
+    inside the gutter it belongs to.
     """
+    if cell is not None:
+        radius = max(3, min(radius, int(round(cell * 0.18))))
     lo, hi = max(0, val - radius), min(len(profile), val + radius + 1)
     if hi <= lo:
         return val, 0.0, 0
@@ -293,11 +326,37 @@ def snap(val: int, limit: int, profile: np.ndarray, radius: int) -> tuple[int, f
     # occupied cell tops out around 0.5. A threshold in that gap is stable
     # across sheets; 0.5 would snap to half-empty corners, 0.9 would refuse
     # real gutters that figures slightly encroach on.
-    min_abs = 0.72
+    # Calibrated from measurement, not taste. With the band-local emptiness
+    # formulation, genuine gutters on these sheets score 0.95-1.00 while the
+    # median column scores 0.12-0.15. A gate at 0.85 sits in the empty middle
+    # of that distribution: high enough that a boundary only moves when there
+    # is a real clear channel, low enough to accept the slight encroachment
+    # that long hair causes at the edge of a cell.
+    min_abs = 0.85
     if peak < min_abs:
         return val, float(np.clip(peak, 0.0, 1.0)), 0
 
     return int(np.clip(chosen, 0, limit)), float(np.clip(peak, 0.0, 1.0)), int(chosen - val)
+
+
+def snap_profile_for_band(img: np.ndarray, spec_groups, H: int, W: int):
+    """Build a column profile per authored band.
+
+    Each band gets its own profile because a gutter only exists relative to the
+    band it separates (see `gutter_profiles`). Boundaries are then snapped
+    against the profile of the band they belong to, so the turnaround's left
+    edge is measured against the turnaround's own clear channels rather than
+    against a sheet-wide average that includes unrelated rows.
+    """
+    cache = {}
+    for g in spec_groups:
+        y0 = max(0, int(g["y"]))
+        y1 = min(H, int(g["y"]) + int(g["h"]))
+        key = (y0, y1, int(g.get("rows", 1)))
+        if key not in cache:
+            col, _ = gutter_profiles(img, band=(y0, y1))
+            cache[key] = col
+    return cache
 
 
 def expand_groups(spec_groups) -> list[dict]:
@@ -329,9 +388,9 @@ def expand_groups(spec_groups) -> list[dict]:
 
 
 def build_sheet(sheet: str, img: np.ndarray, spec: dict, radius: int) -> SheetLayout:
-    score = border_score(img)
-    col_prof, row_prof = gutter_profiles(img)
     H, W = img.shape[:2]
+    _, row_prof = gutter_profiles(img)
+    band_cols = snap_profile_for_band(img, spec["groups"], H, W)
 
     layout = SheetLayout(
         sheet=sheet,
@@ -344,16 +403,28 @@ def build_sheet(sheet: str, img: np.ndarray, spec: dict, radius: int) -> SheetLa
     )
 
     rows_ = expand_groups(spec["groups"])
+    # Which authored band each expanded panel came from, so we can pick the
+    # matching column profile.
+    band_of = {}
+    for gi, g in enumerate(spec["groups"]):
+        cols = int(g.get("cols", 1)); rws = int(g.get("rows", 1))
+        for k in range(cols * rws):
+            band_of[len(band_of)] = gi
+
     for i, p in enumerate(rows_, start=1):
+        g = spec["groups"][band_of[i - 1]]
+        kkey = (max(0, int(g["y"])), min(H, int(g["y"]) + int(g["h"])), int(g.get("rows", 1)))
+        col_prof = band_cols[kkey]
+
         # Snap each of the four boundaries independently. Left/right snap on the
-        # column profile, top/bottom on the row profile. Snapping all four is
-        # what turns a seed grid into a measurement.
-        nx, cx, dx = snap(p["x"], W, col_prof, radius)
-        ny, cy, dy = snap(p["y"], H, row_prof, radius)
+        # band's column profile, top/bottom on the row profile. Snapping all
+        # four is what turns a seed grid into a measurement.
+        nx, cx, dx = snap(p["x"], W, col_prof, radius, cell=p["w"])
+        ny, cy, dy = snap(p["y"], H, row_prof, radius, cell=p["h"])
         # Right/bottom are snapped as their own boundaries, not derived from
         # x+w, so a mis-sized seed cell cannot propagate.
-        rx, crx, drx = snap(p["x"] + p["w"], W, col_prof, radius)
-        by, cby, dby = snap(p["y"] + p["h"], H, row_prof, radius)
+        rx, crx, drx = snap(p["x"] + p["w"], W, col_prof, radius, cell=p["w"])
+        by, cby, dby = snap(p["y"] + p["h"], H, row_prof, radius, cell=p["h"])
 
         # Guard the obvious degenerate case: if two snapped boundaries cross
         # over, the snap was wrong and the seed was more trustworthy.
