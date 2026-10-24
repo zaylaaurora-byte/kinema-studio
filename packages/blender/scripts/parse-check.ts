@@ -9,7 +9,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { buildSceneScript } from "../src/script-builder.js";
+import { buildSceneScript } from "../src/script-builder.ts";
 
 const PYTHON =
   process.env["KINEMA_PYTHON"] ??

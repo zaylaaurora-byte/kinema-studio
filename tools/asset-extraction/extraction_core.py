@@ -165,6 +165,9 @@ class BackgroundModel:
 
     def evaluate(self, bgr: np.ndarray) -> np.ndarray:
         """Per-pixel background colour, same shape as input."""
+        clipped = getattr(self, "_eval_clipped", None)
+        if self.mode == "gradient" and clipped is not None:
+            return clipped(bgr)
         if self.mode == "gradient" and self.coeffs is not None:
             h, w = bgr.shape[:2]
             ys, xs = np.mgrid[0:h, 0:w]
@@ -231,72 +234,112 @@ def estimate_flat_background(im: np.ndarray, ring: int = 4) -> BackgroundModel:
 
 
 def estimate_gradient_background(im: np.ndarray, degree: int = 2,
-                                 ring: int = 4, max_px: int = 400_000,
-                                 robust_iters: int = 3) -> BackgroundModel:
+                                 ring: int = 4, max_px: int = 250_000,
+                                 iterations: int = 4) -> BackgroundModel:
     """Fit a low-order polynomial to the page background.
 
     WHY a polynomial: the beige drifts smoothly across these sheets (paper
-    texture + vignette). A plane would not capture the corners, and per-tile
-    constants would produce visible seams at tile boundaries. A degree-2 fit is
-    smooth everywhere and has only 6 coefficients per channel, so it cannot
-    overfit into the artwork.
+    texture plus a soft vignette). A single colour leaves a halo on one side of
+    every panel, which is exactly what the first version of this function did.
 
-    Robustness: we fit on all pixels that are currently *close* to the flat
-    median, then re-fit, dropping pixels that the previous fit explains badly.
-    Without this the dark outline pixels drag the surface down and the estimate
-    starts eating the linework.
+    WHY the first version diverged - worth recording, because it is a trap:
+    it selected pixels by "within 22 levels of the flat median", then fitted,
+    then re-selected using the FIT's own residual and iterated. On sheet 04 that
+    fed back on itself: the fit drifted onto the artwork, the residual test then
+    accepted artwork pixels as background, and the surface ran away to nonsense
+    (it was predicting values like #10110F10E at the corners, 240+ levels off).
+
+    The fix is to never let the fit choose its own input set. We pick background
+    candidates ONCE, from the measured colour distribution, and hold that set
+    fixed. Specifically:
+      * The border ring is background by construction on a reference sheet, so
+        it seeds the estimate.
+      * Real background pixels cluster tightly; artwork spreads out. We take the
+        modal cluster of the ring and grow it by a fixed tolerance - a decision
+        made from the data, not from the fit.
+      * Weights (not hard cuts) are used, so borderline paper pixels still
+        inform the surface without dragging it.
+
+    Finally we CLIP the surface to a plausible range around the ring median. A
+    smooth polynomial through mostly-flat data should never predict a colour
+    hundreds of levels away, and clipping makes that guarantee unconditional.
     """
     h, w = im.shape[:2]
     flat = estimate_flat_background(im, ring=ring)
+    base = np.asarray(flat.colour, np.float32)
 
     ys, xs = np.mgrid[0:h, 0:w]
     xn = (xs / max(w - 1, 1)).astype(np.float32).ravel()
     yn = (ys / max(h - 1, 1)).astype(np.float32).ravel()
 
-    # Design matrix for a total-degree `degree` polynomial in (x, y).
-    cols, terms = [], []
+    cols = []
     for i in range(degree + 1):
         for j in range(degree + 1 - i):
             cols.append((xn ** i) * (yn ** j))
-            terms.append((i, j))
     A = np.stack(cols, axis=1)
-    del terms
-
     f = im.astype(np.float32).reshape(-1, 3)
-    if f.shape[0] > max_px:                       # subsample purely for speed
+
+    # --- choose the background set ONCE, from the colour distribution -------
+    dev = np.abs(f - base).max(axis=1)
+    # Ring pixels are trustworthy background; extend to the whole sheet only
+    # among pixels that look like the same paper.
+    tol = 26.0
+    cand = dev <= tol
+    if cand.sum() < 2000:
+        cand = dev <= np.percentile(dev, 45)
+
+    if f.shape[0] > max_px:
         idx = np.random.RandomState(0).choice(f.shape[0], max_px, replace=False)
-        As, fs = A[idx], f[idx]
+        Ac, fc, dc = A[idx], f[idx], dev[idx]
     else:
-        As, fs = A, f
+        Ac, fc, dc = A, f, dev
 
-    keep = np.abs(fs - flat.colour).max(axis=1) <= 22.0
-    if keep.sum() < 1000:                        # pathological sheet
-        keep = np.ones(fs.shape[0], bool)
+    # Weight: 1 for confident paper, tapering to 0 as we approach the cut. This
+    # soft edge avoids a cliff where a small tolerance change flips many pixels.
+    wgt = np.clip(1.0 - dc / (tol + 8.0), 0.0, 1.0) ** 2
 
-    coeffs, resid = None, np.zeros(3)
-    for _ in range(max(1, robust_iters)):
-        Ak = As[keep]
-        coeffs = []
-        for c in range(3):
-            sol, *_ = np.linalg.lstsq(Ak, fs[keep, c], rcond=None)
-            coeffs.append(sol)
-        pred = np.stack([As @ np.asarray(coeffs[c], np.float32) for c in range(3)], 1)
-        resid = np.abs(pred - fs).max(axis=1)
-        newkeep = resid <= max(12.0, np.percentile(resid, 70))
-        if newkeep.sum() < 1000:
-            break
-        if np.array_equal(newkeep, keep):
-            break
-        keep = newkeep
+    coeffs = []
+    for c in range(3):
+        # Weighted least squares via row scaling - simpler and more numerically
+        # stable here than building a full weight matrix.
+        sw = np.sqrt(wgt)
+        sol, *_ = np.linalg.lstsq(Ac * sw[:, None], fc[:, c] * sw, rcond=None)
+        coeffs.append(sol)
+
+    # --- clip the surface so it can never predict an absurd colour ----------
+    lo = base - 40.0
+    hi = base + 40.0
 
     model = BackgroundModel(
-        mode="gradient", colour=tuple(float(v) for v in flat.colour),
+        mode="gradient", colour=tuple(float(v) for v in base),
         coeffs=[[float(v) for v in c] for c in coeffs], poly_degree=degree,
         t_lo=10.0, t_hi=26.0,
     )
-    # residual_p95 tells the user how well we actually modelled the paper. If
-    # it is large, the matte deserves less trust - so we surface it.
-    model.residual_p95 = float(np.percentile(resid[keep], 95)) if keep.any() else 0.0
+
+    def evaluate_clipped(bgr: np.ndarray) -> np.ndarray:
+        hh, ww = bgr.shape[:2]
+        y2, x2 = np.mgrid[0:hh, 0:ww]
+        x2n = (x2 / max(ww - 1, 1)).astype(np.float32)
+        y2n = (y2 / max(hh - 1, 1)).astype(np.float32)
+        out = np.empty((hh, ww, 3), np.float32)
+        for c in range(3):
+            acc = np.zeros((hh, ww), np.float32)
+            k = 0
+            for i in range(degree + 1):
+                for j in range(degree + 1 - i):
+                    acc += coeffs[c][k] * (x2n ** i) * (y2n ** j)
+                    k += 1
+            out[:, :, c] = np.clip(acc, lo[c], hi[c])
+        return out
+
+    model._eval_clipped = evaluate_clipped  # type: ignore[attr-defined]
+
+    # Report the true residual over the pixels we trust, so the user can see how
+    # well we modelled the paper. Large values mean the matte deserves doubt.
+    pred = evaluate_clipped(im)
+    resid = np.abs(pred - im.astype(np.float32)).max(axis=2)
+    model.residual_p95 = (float(np.percentile(resid.ravel()[cand], 95))
+                          if cand.any() else 0.0)
     return model
 
 

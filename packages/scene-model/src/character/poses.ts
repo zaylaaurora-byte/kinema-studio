@@ -107,13 +107,16 @@ export const NEUTRAL: Pose = {
  */
 export const WAVE: Pose = {
   name: "wave",
-  description: "Right arm raised high and waving, left arm relaxed.",
+  description: "Right arm raised high and out to the side, left arm relaxed.",
   channels: {
     hips: root(0, 0, 0),
     torso: limb(-3),
     head: limb(4),
-    "upperArm-right": limb(150),
-    "lowerArm-right": limb(-28),
+    // ~118 degrees puts the upper arm just past horizontal and clearly out to the SIDE
+    // of the head. Pushing much beyond this swings the arm behind the head instead,
+    // which reads as scratching rather than waving.
+    "upperArm-right": limb(-118),
+    "lowerArm-right": limb(-24),
     "hand-right": limb(0),
     "upperArm-left": limb(6),
     "lowerArm-left": limb(-8),
@@ -191,6 +194,65 @@ export const RUN: Pose = {
     "lowerArm-right": limb(-72),
     "upperArm-left": limb(-46),
     "lowerArm-left": limb(-78),
+  },
+};
+
+/**
+ * Run, opposite contact: the second half of a two-pose limited-animation run cycle.
+ *
+ * In this style a run is NOT a smoothly interpolated curve. It is two (sometimes three)
+ * extreme poses swapped on a beat, and the audience's eye supplies the motion. This pose
+ * is therefore the exact mirror of `RUN` — left and right limbs exchanged — which makes
+ * `[run, runAlt]` a genuine alternating cycle rather than two similar drawings.
+ */
+export const RUN_ALT: Pose = {
+  name: "runAlt",
+  description: "Run, opposite contact: right leg forward, left leg driving back.",
+  channels: {
+    hips: root(-12, 0, 3),
+    torso: limb(-6),
+    head: limb(8),
+    // Right leg forward and nearly straight at contact.
+    "upperLeg-right": limb(38),
+    "lowerLeg-right": limb(-16),
+    "foot-right": limb(14),
+    // Left leg swept back with a strongly folded knee.
+    "upperLeg-left": limb(-34),
+    "lowerLeg-left": limb(64),
+    "foot-left": limb(-20),
+    // Arms opposed to the legs: left arm forward, right arm back.
+    "upperArm-left": limb(52),
+    "lowerArm-left": limb(-72),
+    "upperArm-right": limb(-46),
+    "lowerArm-right": limb(-78),
+  },
+};
+
+/**
+ * A single held beat of a run, with the body lifted.
+ *
+ * The third pose of a three-pose run: both legs gathered under the body at the top of
+ * the bounce. Two-pose cycles read as a shuffle; adding this "up" pose between the two
+ * contacts is what gives the run its weight, and it is still only three discrete
+ * drawings swapped on a beat.
+ */
+export const RUN_UP: Pose = {
+  name: "runUp",
+  description: "Run, gathered: both legs folded under the lifted body.",
+  channels: {
+    hips: root(-10, 0, 6),
+    torso: limb(-6),
+    head: limb(9),
+    "upperLeg-left": limb(16),
+    "lowerLeg-left": limb(52),
+    "foot-left": limb(-18),
+    "upperLeg-right": limb(-12),
+    "lowerLeg-right": limb(46),
+    "foot-right": limb(-14),
+    "upperArm-left": limb(-20),
+    "lowerArm-left": limb(-80),
+    "upperArm-right": limb(24),
+    "lowerArm-right": limb(-74),
   },
 };
 
@@ -283,6 +345,8 @@ export const POSES: Readonly<Record<string, Pose>> = Object.freeze({
   point: POINT,
   armsUp: ARMS_UP,
   run: RUN,
+  runAlt: RUN_ALT,
+  runUp: RUN_UP,
   trip: TRIP,
   cower: COWER,
   handsOnHips: HANDS_ON_HIPS,

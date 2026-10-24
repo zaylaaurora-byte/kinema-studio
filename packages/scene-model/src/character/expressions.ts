@@ -56,8 +56,8 @@ function at(value: number): Channel {
 export const FACE_REST = {
   eyeLeft: { x: HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.12 },
   eyeRight: { x: -HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.12 },
-  browLeft: { x: HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.42 },
-  browRight: { x: -HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.42 },
+  browLeft: { x: HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.52 },
+  browRight: { x: -HEAD_RADIUS * 0.36, y: HEAD_RADIUS * 0.52 },
   mouth: { x: 0, y: -HEAD_RADIUS * 0.34 },
 } as const;
 
@@ -156,67 +156,78 @@ export const DEFAULT_EXPRESSION: Expression = {
   channels: face(1, 1, 0, 0, 0, 1, 1, 0),
 };
 
+// Sign conventions, so the table below stays readable:
+//   browDeltaY / eyeDeltaY / mouthDeltaY are in HEAD RADII, and +y is UP.
+//     positive -> feature moves toward the top of the head
+//     negative -> feature moves toward the chin
+//   mouthDeltaY negative therefore opens the mouth DOWNWARD, away from the eyes.
+//
+// Magnitudes are kept small deliberately. The head radius is 11, so a delta of 0.2 is
+// about 2.2 units — enough to read as a big change of expression while keeping every
+// feature comfortably inside the head circle. Deltas above roughly 0.45 push the eyes
+// out through the top of the head, which is why they are avoided.
+
 /** Big open smile: the sheet's HAPPY. */
 export const HAPPY: Expression = {
   name: "happy",
   description: "Warm open smile, brows relaxed and slightly raised.",
-  channels: face(1, 0.75, -6, 0.35, 0, 1.5, 1.5, -0.35),
+  channels: face(1, 0.78, -6, 0.08, 0, 1.5, 1.6, -0.14),
 };
 
 /** Eyes wide, mouth a big open oval: the sheet's EXCITED. */
 export const EXCITED: Expression = {
   name: "excited",
   description: "Eyes wide and tall, mouth wide open in delight.",
-  channels: face(1.15, 1.5, -14, 0.5, 0.15, 1.3, 2.6, -0.7),
+  channels: face(1.12, 1.35, -12, 0.14, 0.04, 1.25, 2.4, -0.26),
 };
 
 /** Brows up and uneven, mouth a small squiggle: the sheet's CONFUSED. */
 export const CONFUSED: Expression = {
   name: "confused",
   description: "One brow cocked, mouth a small uncertain squiggle.",
-  channels: face(0.95, 1.05, 16, 0.45, 0.1, 0.7, 0.8, 0.1, 12),
+  channels: face(0.95, 1.05, 16, 0.12, 0.03, 0.7, 0.8, -0.04, 12),
 };
 
 /** Tiny pupils, brows high: the sheet's SCARED. */
 export const SCARED: Expression = {
   name: "scared",
   description: "Eyes shrunk to pinpricks, brows shot up, mouth a small tight oval.",
-  channels: face(0.6, 0.6, -22, 0.8, 0.3, 0.65, 1.1, 0.15),
+  channels: face(0.6, 0.6, -18, 0.2, 0.08, 0.65, 1.1, -0.08),
 };
 
 /** Maximum terror: the sheet's PANIC. */
 export const PANIC: Expression = {
   name: "panic",
-  description: "Eyes bulging, brows lost off the top of the head, mouth a wailing hole.",
-  channels: face(1.2, 1.7, -30, 1.15, 0.45, 1.05, 3.2, -0.9),
+  description: "Eyes bulging, brows shot up, mouth a wailing hole.",
+  channels: face(1.15, 1.4, -24, 0.26, 0.1, 1.05, 2.8, -0.3),
 };
 
 /** Brows angled hard inward and down: the sheet's DETERMINED. */
 export const DETERMINED: Expression = {
   name: "determined",
   description: "Brows driven down and inward, eyes narrowed, mouth a flat line.",
-  channels: face(1.1, 0.6, 26, -0.5, -0.1, 1.35, 0.3, 0.15),
+  channels: face(1.05, 0.62, 24, -0.12, -0.04, 1.3, 0.35, -0.02),
 };
 
 /** Heavy lids, flat mouth, slight droop: the sheet's TIRED. */
 export const TIRED: Expression = {
   name: "tired",
   description: "Half-closed eyes, brows drooping outward, small slack mouth.",
-  channels: face(1.05, 0.4, -10, -0.15, -0.25, 0.85, 0.9, 0.3),
+  channels: face(1.05, 0.4, -8, -0.05, -0.06, 0.85, 0.9, 0),
 };
 
 /** Extra expression: the sheet's SAD, for the fall's punchline beat. */
 export const SAD: Expression = {
   name: "sad",
   description: "Brows tilted up at the inner ends, mouth turned down.",
-  channels: face(1, 0.85, -24, 0.2, -0.1, 0.95, 0.7, 0.35, -18),
+  channels: face(1, 0.85, -22, 0.1, -0.03, 0.95, 0.7, -0.02, -18),
 };
 
 /** Extra expression: the sheet's SHOCKED, a useful hard cut. */
 export const SHOCKED: Expression = {
   name: "shocked",
   description: "Everything wide: round eyes, high brows, a small round mouth.",
-  channels: face(1.1, 1.35, -20, 0.7, 0.25, 0.7, 1.5, -0.1),
+  channels: face(1.1, 1.3, -16, 0.2, 0.06, 0.7, 1.5, -0.06),
 };
 
 /**

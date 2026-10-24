@@ -1,0 +1,557 @@
+{
+  "manifest": "X:\\Project Kinema\\projects\\bad-example\\assets\\extracted\\manifest.json",
+  "thresholds": {
+    "min_alpha_zero_frac": 0.02,
+    "min_opaque_frac": 0.01,
+    "max_opaque_frac": 0.995,
+    "min_outline_retention": 0.92,
+    "max_fragments_per_10k": 40.0,
+    "min_largest_cc_frac": 0.3,
+    "duplicate_iou": 0.995
+  },
+  "sheets": {
+    "01_Demon_Host_Primary_Character_Sheet.png": {
+      "panels": 28,
+      "failed": 0,
+      "mean_alpha_zero_frac": 0.27864285714285714,
+      "mean_opaque_frac": 0.6989714285714286,
+      "mean_outline_retention": 1.0,
+      "min_outline_retention": 1.0,
+      "crop_only": false
+    },
+    "02_Silent_Human_Primary_Character_Sheet.png": {
+      "panels": 67,
+      "failed": 0,
+      "mean_alpha_zero_frac": 0.4097223880597015,
+      "mean_opaque_frac": 0.5512731343283582,
+      "mean_outline_retention": 1.0,
+      "min_outline_retention": 1.0,
+      "crop_only": false
+    },
+    "03_Paired_Character_And_Expressions_Reference.png": {
+      "panels": 83,
+      "failed": 0,
+      "mean_alpha_zero_frac": 0.37140722891566263,
+      "mean_opaque_frac": 0.5937951807228915,
+      "mean_outline_retention": 1.0,
+      "min_outline_retention": 1.0,
+      "crop_only": false
+    },
+    "04_Human_Poses_Outfits_And_Interaction_Reference.png": {
+      "panels": 74,
+      "failed": 21,
+      "mean_alpha_zero_frac": 0.49412027027027017,
+      "mean_opaque_frac": 0.4033945945945946,
+      "mean_outline_retention": 1.0,
+      "min_outline_retention": 1.0,
+      "crop_only": false
+    },
+    "05_Pilot_Open_And_End_Frames.png": {
+      "panels": 2,
+      "failed": 0,
+      "mean_alpha_zero_frac": 0.0,
+      "mean_opaque_frac": 1.0,
+      "mean_outline_retention": 1.0,
+      "min_outline_retention": 1.0,
+      "crop_only": true
+    },
+    "06_Trex_Pilot_Storyboard_Exploration.png": {
+      "panels": 12,
+      "failed": 0,
+      "mean_alpha_zero_frac": 0.0,
+      "mean_opaque_frac": 1.0,
+      "mean_outline_retention": 1.0,
+      "min_outline_retention": 1.0,
+      "crop_only": true
+    }
+  },
+  "failures": [
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/004_head_variants.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "head_variants",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          84,
+          289
+        ],
+        "alpha_zero_frac": 0.7458,
+        "opaque_frac": 0.1508,
+        "components": 16,
+        "fragments_per_10k_opaque": 43.69,
+        "largest_component_frac": 0.3083,
+        "colour_std": 96.95,
+        "source_outline_px": 1848,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/010_06.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "06",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          56
+        ],
+        "alpha_zero_frac": 0.7565,
+        "opaque_frac": 0.1938,
+        "components": 6,
+        "fragments_per_10k_opaque": 80.11,
+        "largest_component_frac": 0.4406,
+        "colour_std": 90.27,
+        "source_outline_px": 206,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/011_07.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "07",
+      "checks": [
+        "noise_not_figure",
+        "shattered"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          56
+        ],
+        "alpha_zero_frac": 0.6366,
+        "opaque_frac": 0.2026,
+        "components": 7,
+        "fragments_per_10k_opaque": 89.4,
+        "largest_component_frac": 0.2925,
+        "colour_std": 90.0,
+        "source_outline_px": 280,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/012_08.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "08",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          56
+        ],
+        "alpha_zero_frac": 0.6423,
+        "opaque_frac": 0.2324,
+        "components": 6,
+        "fragments_per_10k_opaque": 66.82,
+        "largest_component_frac": 0.4065,
+        "colour_std": 96.43,
+        "source_outline_px": 353,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/013_09.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "09",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          56
+        ],
+        "alpha_zero_frac": 0.5202,
+        "opaque_frac": 0.3183,
+        "components": 7,
+        "fragments_per_10k_opaque": 56.91,
+        "largest_component_frac": 0.6585,
+        "colour_std": 91.98,
+        "source_outline_px": 328,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/014_10.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "10",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          77,
+          56
+        ],
+        "alpha_zero_frac": 0.5288,
+        "opaque_frac": 0.2992,
+        "components": 9,
+        "fragments_per_10k_opaque": 69.77,
+        "largest_component_frac": 0.3357,
+        "colour_std": 91.85,
+        "source_outline_px": 324,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/015_11.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "11",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          53
+        ],
+        "alpha_zero_frac": 0.694,
+        "opaque_frac": 0.2152,
+        "components": 6,
+        "fragments_per_10k_opaque": 76.24,
+        "largest_component_frac": 0.4041,
+        "colour_std": 93.52,
+        "source_outline_px": 225,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/016_12.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "12",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          53
+        ],
+        "alpha_zero_frac": 0.5904,
+        "opaque_frac": 0.3104,
+        "components": 6,
+        "fragments_per_10k_opaque": 52.86,
+        "largest_component_frac": 0.667,
+        "colour_std": 92.58,
+        "source_outline_px": 287,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/018_14.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "14",
+      "checks": [
+        "noise_not_figure",
+        "shattered"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          53
+        ],
+        "alpha_zero_frac": 0.5945,
+        "opaque_frac": 0.2319,
+        "components": 7,
+        "fragments_per_10k_opaque": 82.55,
+        "largest_component_frac": 0.2323,
+        "colour_std": 97.41,
+        "source_outline_px": 326,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/020_16.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "16",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          52
+        ],
+        "alpha_zero_frac": 0.7475,
+        "opaque_frac": 0.1853,
+        "components": 3,
+        "fragments_per_10k_opaque": 45.11,
+        "largest_component_frac": 0.5714,
+        "colour_std": 86.96,
+        "source_outline_px": 142,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/024_20.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "20",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          77,
+          52
+        ],
+        "alpha_zero_frac": 0.4878,
+        "opaque_frac": 0.3154,
+        "components": 6,
+        "fragments_per_10k_opaque": 47.51,
+        "largest_component_frac": 0.4576,
+        "colour_std": 94.34,
+        "source_outline_px": 384,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/026_22.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "22",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          66
+        ],
+        "alpha_zero_frac": 0.5982,
+        "opaque_frac": 0.2101,
+        "components": 9,
+        "fragments_per_10k_opaque": 94.04,
+        "largest_component_frac": 0.4368,
+        "colour_std": 94.7,
+        "source_outline_px": 364,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/027_23.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "23",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          69,
+          66
+        ],
+        "alpha_zero_frac": 0.6449,
+        "opaque_frac": 0.1965,
+        "components": 5,
+        "fragments_per_10k_opaque": 55.87,
+        "largest_component_frac": 0.4603,
+        "colour_std": 98.01,
+        "source_outline_px": 332,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/032_03.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "03",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          70,
+          58
+        ],
+        "alpha_zero_frac": 0.7229,
+        "opaque_frac": 0.1534,
+        "components": 6,
+        "fragments_per_10k_opaque": 96.31,
+        "largest_component_frac": 0.695,
+        "colour_std": 94.99,
+        "source_outline_px": 255,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/037_08.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "08",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          70,
+          72
+        ],
+        "alpha_zero_frac": 0.6927,
+        "opaque_frac": 0.1881,
+        "components": 5,
+        "fragments_per_10k_opaque": 52.74,
+        "largest_component_frac": 0.4451,
+        "colour_std": 95.22,
+        "source_outline_px": 370,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/038_09.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "09",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          70,
+          72
+        ],
+        "alpha_zero_frac": 0.7127,
+        "opaque_frac": 0.1708,
+        "components": 6,
+        "fragments_per_10k_opaque": 69.69,
+        "largest_component_frac": 0.5947,
+        "colour_std": 94.09,
+        "source_outline_px": 339,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/039_10.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "10",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          70,
+          72
+        ],
+        "alpha_zero_frac": 0.6627,
+        "opaque_frac": 0.1976,
+        "components": 5,
+        "fragments_per_10k_opaque": 50.2,
+        "largest_component_frac": 0.6978,
+        "colour_std": 95.03,
+        "source_outline_px": 412,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/042_13.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "13",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          70,
+          77
+        ],
+        "alpha_zero_frac": 0.6852,
+        "opaque_frac": 0.2058,
+        "components": 5,
+        "fragments_per_10k_opaque": 45.09,
+        "largest_component_frac": 0.9234,
+        "colour_std": 95.06,
+        "source_outline_px": 427,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/044_15.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "15",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          70,
+          77
+        ],
+        "alpha_zero_frac": 0.6043,
+        "opaque_frac": 0.2375,
+        "components": 12,
+        "fragments_per_10k_opaque": 93.75,
+        "largest_component_frac": 0.5883,
+        "colour_std": 92.73,
+        "source_outline_px": 508,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/045_16.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "16",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          72,
+          81
+        ],
+        "alpha_zero_frac": 0.7179,
+        "opaque_frac": 0.1708,
+        "components": 4,
+        "fragments_per_10k_opaque": 40.16,
+        "largest_component_frac": 0.504,
+        "colour_std": 91.65,
+        "source_outline_px": 386,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    },
+    {
+      "file": "04_Human_Poses_Outfits_And_Interaction_Reference/055_scientist.png",
+      "sheet": "04_Human_Poses_Outfits_And_Interaction_Reference.png",
+      "label": "scientist",
+      "checks": [
+        "noise_not_figure"
+      ],
+      "metrics": {
+        "size": [
+          76,
+          158
+        ],
+        "alpha_zero_frac": 0.7092,
+        "opaque_frac": 0.2249,
+        "components": 11,
+        "fragments_per_10k_opaque": 40.73,
+        "largest_component_frac": 0.3773,
+        "colour_std": 90.81,
+        "source_outline_px": 925,
+        "outline_retention": 1.0,
+        "outline_lost_px": 0
+      }
+    }
+  ],
+  "passed": false,
+  "panels": 266
+}

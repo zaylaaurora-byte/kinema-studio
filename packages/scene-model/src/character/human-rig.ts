@@ -336,10 +336,11 @@ export function buildHumanRig(id = "silent-human"): Rig {
   const EYE_DX = HEAD_RADIUS * 0.36;
   const EYE_RX = HEAD_RADIUS * 0.17;
   const EYE_RY = HEAD_RADIUS * 0.26;
-  // Brows sit just above the eyes, not up on the crown. At 0.42 the brow bar's top edge
-  // lands around 0.6 of the radius, leaving a clear forehead margin inside the circle.
-  const BROW_Y = HEAD_RADIUS * 0.42;
-  const BROW_HALF_W = HEAD_RADIUS * 0.22;
+  // Brows sit clearly above the eyes with a visible gap, and are thinner than they are
+  // wide so they read as expressive bars rather than a solid fringe.
+  const BROW_Y = HEAD_RADIUS * 0.52;
+  const BROW_HALF_W = HEAD_RADIUS * 0.24;
+  const BROW_HALF_H = HEAD_RADIUS * 0.055;
   // Mouth sits between the eyes and the chin, biased toward the chin as on the sheet.
   const MOUTH_Y = -HEAD_RADIUS * 0.34;
   const MOUTH_RX = HEAD_RADIUS * 0.24;
@@ -376,14 +377,15 @@ export function buildHumanRig(id = "silent-human"): Rig {
       parentId: "head",
       localPosition: { x: sign * EYE_DX, y: BROW_Y },
       zIndex: 23,
-      // A thick horizontal bar drawn as a closed path. Rotation is what makes a brow
-      // angry, worried or smug.
+      // A slim horizontal bar drawn as a closed path. Rotation is what makes a brow
+      // angry, worried or smug; the bar is wider than it is tall so that rotation reads
+      // as a change of angle rather than a change of size.
       shapes: [
         {
           kind: "path",
           d:
-            `M ${-BROW_HALF_W} ${EYE_RY * 0.5} L ${BROW_HALF_W} ${EYE_RY * 0.5} ` +
-            `L ${BROW_HALF_W} ${-EYE_RY * 0.5} L ${-BROW_HALF_W} ${-EYE_RY * 0.5} Z`,
+            `M ${-BROW_HALF_W} ${BROW_HALF_H} L ${BROW_HALF_W} ${BROW_HALF_H} ` +
+            `L ${BROW_HALF_W} ${-BROW_HALF_H} L ${-BROW_HALF_W} ${-BROW_HALF_H} Z`,
         },
       ],
     });

@@ -369,20 +369,24 @@ function emitAddPrimitive(op: AddPrimitiveOperation, lines: string[]): void {
     kwargs.push(`${sizeKwarg}=${pythonNumber(op.size, "size")}`);
   }
 
-  lines.push(`bpy.ops.${operator}(${kwargs.join(", ")})`);
+  lines.push(`${operator}(${kwargs.join(", ")})`);
   lines.push(`_object = bpy.context.active_object`);
   lines.push(`if _object is None:`);
   lines.push(`    _kinema_warnings.append('primitive ${op.kind} produced no active object')`);
   lines.push(`else:`);
   lines.push(`    _object.name = ${pythonStringLiteral(op.name)}`);
   if (op.material !== undefined) {
-    lines.push(`    _kinema_material = bpy.data.materials.get(${pythonStringLiteral(op.material)})`);
-    lines.push(`    if _kinema_material is None:`);
+    // `_kinema_lookup`, never `_kinema_material`: `dict.get(material)` inside a function
+    // rebinds that local name to None for the whole call BEFORE the lookup runs, so the
+    // call would pass None as the key and the material would silently never be found.
+    // The name is deliberately different from any variable that holds the material.
+    lines.push(`    _kinema_lookup = bpy.data.materials.get(${pythonStringLiteral(op.material)})`);
+    lines.push(`    if _kinema_lookup is None:`);
     lines.push(
       `        _kinema_warnings.append('material ' + ${pythonStringLiteral(op.material)} + ' not found for object ' + _object.name)`,
     );
     lines.push(`    else:`);
-    lines.push(`        _object.data.materials.append(_kinema_material)`);
+    lines.push(`        _object.data.materials.append(_kinema_lookup)`);
   }
   lines.push("");
 }
@@ -414,19 +418,40 @@ function emitSetMaterial(op: SetMaterialOperation, lines: string[]): void {
   lines.push(`_kinema_material.diffuse_color = _kinema_rgba`);
 
   for (const target of op.applyTo ?? []) {
-    lines.push(`_kinema_target = bpy.data.objects.get(${pythonStringLiteral(target)})`);
-    lines.push(`if _kinema_target is None:`);
+    lines.push(`_kinema_object = bpy.data.objects.get(${pythonStringLiteral(target)})`);
+    lines.push(`if _kinema_object is None:`);
     lines.push(
       `    _kinema_warnings.append('setMaterial target ' + ${pythonStringLiteral(target)} + ' does not exist')`,
     );
-    lines.push(`elif _kinema_target.type != 'MESH':`);
+    lines.push(`elif _kinema_object.type != 'MESH':`);
     lines.push(
-      `    _kinema_warnings.append('setMaterial target ' + _kinema_target.name + ' is not a mesh')`,
+      `    _kinema_warnings.append('setMaterial target ' + _kinema_object.name + ' is not a mesh')`,
     );
     lines.push(`else:`);
-    lines.push(`    _kinema_target.data.materials.clear()`);
-    lines.push(`    _kinema_target.data.materials.append(_kinema_material)`);
+    lines.push(`    _kinema_object.data.materials.clear()`);
+    lines.push(`    _kinema_object.data.materials.append(_kinema_material)`);
   }
+  lines.push("");
+}
+
+/**
+ * Serialise one `render` operation.
+ *
+ * The render call is wrapped, and a failure is recorded in the report rather than being
+ * allowed to abort the script. A build that got nine objects deep and then failed to
+ * render should return those nine objects plus a reason, not nothing.
+ */
+function emitRender(op: RenderOperation, lines: string[]): void {
+  lines.push(`_kinema_render_error = None`);
+  lines.push(`try:`);
+  lines.push(
+    `    bpy.ops.render.render(${op.animation === true ? "animation=True" : "write_still=True"})`,
+  );
+  lines.push(`    _kinema_report['render'] = 'ok'`);
+  lines.push(`except Exception as _kinema_exc:`);
+  lines.push(`    _kinema_render_error = str(_kinema_exc)`);
+  lines.push(`    _kinema_report['render'] = 'failed: ' + _kinema_render_error`);
+  lines.push(`    _kinema_warnings.append('render failed: ' + _kinema_render_error)`);
   lines.push("");
 }
 
@@ -589,35 +614,32 @@ function emitOperations(operations: readonly SceneOperation[]): string {
   const lines: string[] = [];
 
   for (const [index, operation] of operations.entries()) {
+    // Each operation is emitted inside its own `if True:` block. That is not decoration:
+    // several operations reuse scratch names (`_kinema_material`, `_light`, `_camera`),
+    // and Python's function-level scoping means a name bound in one branch stays bound.
+    // Wrapping each operation keeps every scratch name local to its block, so a later
+    // operation cannot accidentally read an earlier one's leftovers.
     lines.push(`# --- operation ${index + 1}: ${operation.op} ---`);
+    lines.push(`if True:`);
+    const body: string[] = [];
     switch (operation.op) {
       case "addPrimitive":
-        emitAddPrimitive(operation, lines);
+        emitAddPrimitive(operation, body);
         break;
       case "setMaterial":
-        emitSetMaterial(operation, lines);
+        emitSetMaterial(operation, body);
         break;
       case "addLight":
-        emitAddLight(operation, lines);
+        emitAddLight(operation, body);
         break;
       case "addCamera":
-        emitAddCamera(operation, lines);
+        emitAddCamera(operation, body);
         break;
       case "setRenderSettings":
-        emitSetRenderSettings(operation, lines);
+        emitSetRenderSettings(operation, body);
         break;
       case "render":
-        lines.push(`_kinema_render_error = None`);
-        lines.push(`try:`);
-        lines.push(
-          `    bpy.ops.render.render(${operation.animation === true ? "animation=True" : "write_still=True"})`,
-        );
-        lines.push(`    _kinema_report['render'] = 'ok'`);
-        lines.push(`except Exception as _exc:`);
-        lines.push(`    _kinema_render_error = str(_exc)`);
-        lines.push(`    _kinema_report['render'] = 'failed: ' + _kinema_render_error`);
-        lines.push(`    _kinema_warnings.append('render failed: ' + _kinema_render_error)`);
-        lines.push("");
+        emitRender(operation, body);
         break;
       default: {
         // Exhaustiveness: adding an operation to the union without handling it here is a
@@ -626,6 +648,17 @@ function emitOperations(operations: readonly SceneOperation[]): string {
         throw new ScriptBuildError(`Unhandled operation: ${JSON.stringify(unreachable)}`);
       }
     }
+    // Blank lines inside the block are dropped: the emitters end each operation with one
+    // for readability when they were appended directly, and an empty line inside a suite
+    // is harmless but noisy.
+    for (const line of body) {
+      if (line === "") continue;
+      lines.push(`    ${line}`);
+    }
+    // The one scratch name that must survive the block, because the render operation and
+    // any later operation depend on it. Assigning to `scene.` attributes is what actually
+    // persists, but `scene` itself is module-level and needs no rebinding.
+    lines.push("");
   }
 
   return lines.join("\n");
@@ -637,10 +670,16 @@ function emitOperations(operations: readonly SceneOperation[]): string {
  * The report is printed even when the build raised, because a partial scene plus a
  * traceback is far more useful than a traceback alone. It runs from a `finally` so no
  * code path can skip it.
+ *
+ * `scene` is rebuilt from `bpy.context.scene` rather than trusted from the prelude. Every
+ * generated operation body runs at module scope, so a stray assignment to `scene` would
+ * silently redirect the report at a stale scene — and the report is the only evidence the
+ * caller has about what was actually built.
  */
 const EPILOGUE = `
-_kinema_report['objects'] = sorted([_object.name for _object in bpy.data.objects])
-_kinema_report['materials'] = sorted([_material.name for _material in bpy.data.materials])
+scene = bpy.context.scene
+_kinema_report['objects'] = sorted([_kinema_object.name for _kinema_object in bpy.data.objects])
+_kinema_report['materials'] = sorted([_kinema_material.name for _kinema_material in bpy.data.materials])
 _kinema_report['engine'] = scene.render.engine
 _kinema_report['resolution'] = [scene.render.resolution_x, scene.render.resolution_y]
 _kinema_report['resolutionPercentage'] = scene.render.resolution_percentage
@@ -654,6 +693,45 @@ _kinema_report['elapsedMs'] = int((time.time() - _kinema_started) * 1000)
 print('${REPORT_START_MARKER}')
 print(json.dumps(_kinema_report))
 print('${REPORT_END_MARKER}')
+`.trim();
+
+/**
+ * The covered-identifier self-check appended to every generated script.
+ *
+ * A comment saying "never name a local X" does not stop anyone naming a local X, and the
+ * failure it causes is silent: `_kinema_material = bpy.data.materials.get('Foo')` inside a
+ * function looks correct, passes review, passes `ast.parse`, and quietly looks up `None`.
+ * That is exactly the bug this file shipped once during development.
+ *
+ * So the invariant is enforced at runtime instead of asserted in prose. The check runs
+ * last, compares the names the script actually found against `dir()` of the generated
+ * module, and puts the answer in the report rather than raising — a failed invariant must
+ * not destroy an otherwise good render.
+ */
+const SELF_CHECK = `
+# --- covered-identifier self-check -------------------------------------------------
+# Function locals shadow module globals for the whole body of the function, not from the
+# assignment onwards. A helper that reads a covered name while also assigning a local of
+# that same name therefore breaks in a way nothing above can catch. Rather than trust that
+# no emitter ever does that, prove it on every run.
+#
+# The module namespace is read via globals(), not dir(). dir() reports only what has been
+# bound so far, so every name bound inside an 'if True:' suite reads as missing and the
+# check raises a false alarm on a perfectly good script.
+_kinema_expected_globals = [
+    'scene', '_object', '_kinema_warnings', '_kinema_report', '_kinema_lookup',
+    '_kinema_target', '_kinema_material', '_kinema_rgba', '_kinema_engine',
+]
+_kinema_namespace = globals()
+_kinema_missing_globals = sorted([
+    _kinema_name for _kinema_name in _kinema_expected_globals
+    if _kinema_name not in _kinema_namespace
+])
+if _kinema_missing_globals:
+    _kinema_warnings.append(
+        'generated-script self-check found covered identifiers: '
+        + ', '.join(_kinema_missing_globals)
+    )
 `.trim();
 
 export interface BuildSceneScriptOptions {
@@ -711,6 +789,8 @@ export function buildSceneScript(options: BuildSceneScriptOptions): string {
     PRELUDE,
     "",
     body,
+    "",
+    SELF_CHECK,
     "",
     EPILOGUE,
     "",

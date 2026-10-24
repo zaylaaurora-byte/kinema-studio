@@ -226,7 +226,7 @@ function synthesiseLine(
   // slightly with pace as well, because a faster read also closes up its gaps, but they
   // never vanish.
   const totalWeight = words.reduce((sum, w) => sum + wordWeight(w.text), 0);
-  const speechMs = (totalWeight * 60_000) / words_per_minute;
+  const speechMs = (totalWeight * 60_000) / wordsPerMinute;
 
   const scaleToTarget = speechMs / Math.max(1, words.reduce((s, w) => s + wordWeight(w.text), 0));
   const parts: Float64Array[] = [];
@@ -384,24 +384,30 @@ function wordWeight(word: string): number {
   return 0.75 + Math.min(letters, 14) / 20;
 }
 
+/**
+ * Concatenate monophonic frame buffers into an interleaved multi-channel buffer.
+ *
+ * CONTRACT, stated because getting this wrong is silent: every part is a run of FRAMES (one
+ * value per frame), not interleaved samples. The output is `frames * channels` interleaved
+ * samples. The earlier version sized the output by summing `part.length` and then wrote
+ * `part.length * channels` values into it, so for stereo the final sample count was short
+ * by exactly one frame's worth per part and `encodeWav` rejected the buffer. Keeping the
+ * unit explicit in the name is the fix.
+ */
 function concatAll(parts: readonly Float64Array[], channels: number): Float64Array {
-  let total = 0;
-  for (const part of parts) total += part.length;
-  const out = new Float64Array(total);
-  let offset = 0;
+  let totalFrames = 0;
+  for (const part of parts) totalFrames += part.length;
+
+  const out = new Float64Array(totalFrames * channels);
+  let frameOffset = 0;
   for (const part of parts) {
-    // Mono parts are broadcast to the target channel count as they are concatenated.
-    if (channels === 1 || part.length === 0) {
-      out.set(part, offset);
-      offset += part.length;
-      continue;
-    }
-    const frames = part.length;
-    for (let f = 0; f < frames; f++) {
+    for (let f = 0; f < part.length; f++) {
       const value = part[f]!;
-      for (let c = 0; c < channels; c++) out[offset + f * channels + c] = value;
+      for (let c = 0; c < channels; c++) {
+        out[(frameOffset + f) * channels + c] = value;
+      }
     }
-    offset += frames * channels;
+    frameOffset += part.length;
   }
   return out;
 }
